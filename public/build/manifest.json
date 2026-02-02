@@ -1,0 +1,31 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-CBsakCxD.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-CQzh8JQY.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "dynamicImports": [
+      "resources/js/pages/UserManagementPage.vue"
+    ],
+    "css": [
+      "assets/app-DoJvLdP3.css"
+    ]
+  },
+  "resources/js/pages/UserManagementPage.vue": {
+    "file": "assets/UserManagementPage-DVFjsxdq.js",
+    "name": "UserManagementPage",
+    "src": "resources/js/pages/UserManagementPage.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.js"
+    ],
+    "css": [
+      "assets/UserManagementPage-Bj9UZaGz.css"
+    ]
+  }
+}
