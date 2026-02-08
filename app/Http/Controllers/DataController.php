@@ -216,14 +216,10 @@ class DataController extends Controller
                 })->toArray()
             ]);
             
-            // Créer un index pour recherche rapide par code et nom d'agence (exclure FILIALE)
+            // Créer un index pour recherche rapide par code et nom d'agence
             $objectivesByCode = [];
             $objectivesByName = [];
             foreach ($objectives as $objective) {
-                // Ignorer les objectifs FILIALE dans l'index (ils seront traités séparément)
-                if ($objective->category === 'FILIALE') {
-                    continue;
-                }
                 $code = strtoupper(trim($objective->agency_code ?? ''));
                 $name = strtoupper(trim($objective->agency_name ?? ''));
                 if ($code) {
@@ -251,14 +247,10 @@ class DataController extends Controller
                 return trim($name);
             };
             
-            // Créer aussi un index normalisé (exclure FILIALE)
+            // Créer aussi un index normalisé
             $objectivesByNormalizedCode = [];
             $objectivesByNormalizedName = [];
             foreach ($objectives as $objective) {
-                // Ignorer les objectifs FILIALE dans l'index normalisé
-                if ($objective->category === 'FILIALE') {
-                    continue;
-                }
                 $code = $normalizeAgencyName($objective->agency_code);
                 $name = $normalizeAgencyName($objective->agency_name);
                 if ($code) {
@@ -270,7 +262,7 @@ class DataController extends Controller
             }
             
             // Fonction récursive pour fusionner les objectifs dans la structure hiérarchique
-            $mergeRecursive = function(&$item, $depth = 0, $contextCategory = null) use (&$mergeRecursive, &$mergedCount, $normalizeAgencyName, $objectivesByCode, $objectivesByName, $objectivesByNormalizedCode, $objectivesByNormalizedName, $type) {
+            $mergeRecursive = function(&$item, $depth = 0) use (&$mergeRecursive, &$mergedCount, $normalizeAgencyName, $objectivesByCode, $objectivesByName, $objectivesByNormalizedCode, $objectivesByNormalizedName, $type) {
                 if (is_array($item)) {
                     foreach ($item as $key => &$value) {
                         if (is_array($value)) {
@@ -403,63 +395,25 @@ class DataController extends Controller
                                 
                                 if ($objective) {
                                     // Fusionner l'objectif (priorité aux objectifs personnalisés)
-                                    // Ne pas écraser un objectif existant s'il est déjà défini (sauf s'il est 0)
                                     $oldValue = $value['objectif'] ?? $value['OBJECTIF_CLIENT'] ?? $value['OBJECTIF_PRODUCTION'] ?? 0;
-                                    $newValue = (int)$objective->value;
-                                    
-                                    // Récupérer NOMBRES et VOLUME si disponibles
-                                    $newValueNombres = $objective->value_nombres !== null ? (int)$objective->value_nombres : null;
-                                    $newValueVolume = $objective->value_volume !== null ? (int)$objective->value_volume : null;
-                                    
-                                    // Si l'ancienne valeur est 0 ou vide, utiliser la nouvelle valeur
-                                    // Sinon, garder la valeur existante (priorité aux objectifs déjà fusionnés)
-                                    if ($oldValue == 0 || $oldValue === null) {
                                     if ($type === 'CLIENT') {
-                                            $value['OBJECTIF_CLIENT'] = $newValue;
-                                            $value['objectif'] = $newValue;
-                                        } elseif (in_array($type, ['PRODUCTION', 'PRODUCTION_VOLUME', 'ENCOURS_CREDIT', 'PRODUCTION_ENCOURS'])) {
-                                            // Pour tous les types de production, utiliser OBJECTIF_PRODUCTION
-                                            $value['OBJECTIF_PRODUCTION'] = $newValue;
-                                            $value['objectif'] = $newValue;
+                                        $value['OBJECTIF_CLIENT'] = (int)$objective->value;
+                                        $value['objectif'] = (int)$objective->value;
                                     } else {
-                                            // Par défaut, utiliser objectif
-                                            $value['objectif'] = $newValue;
+                                        $value['OBJECTIF_PRODUCTION'] = (int)$objective->value;
+                                        $value['objectif'] = (int)$objective->value;
                                     }
-                                    
-                                    // Ajouter NOMBRES et VOLUME si disponibles
-                                    if ($newValueNombres !== null) {
-                                        $value['OBJECTIF_NOMBRES'] = $newValueNombres;
-                                        $value['NOMBRES'] = $newValueNombres;
-                                    }
-                                    if ($newValueVolume !== null) {
-                                        $value['OBJECTIF_VOLUME'] = $newValueVolume;
-                                        $value['VOLUME'] = $newValueVolume;
-                                    }
-                                    
                                     $mergedCount++;
                                     Log::info('✅ Objectif fusionné avec succès', [
                                         'agency_code_oracle' => $agencyCode,
                                         'agency_name_oracle' => $agencyName,
                                         'objective_code' => strtoupper(trim($objective->agency_code ?? '')),
                                         'objective_name' => strtoupper(trim($objective->agency_name ?? '')),
-                                            'objective_category' => $objective->category,
                                         'old_value' => $oldValue,
-                                            'new_value' => $newValue,
-                                            'new_value_nombres' => $newValueNombres,
-                                            'new_value_volume' => $newValueVolume,
+                                        'new_value' => $objective->value,
                                         'objective_id' => $objective->id,
-                                            'depth' => $depth,
-                                            'context_category' => $contextCategory
-                                        ]);
-                                    } else {
-                                        Log::debug('⚠️ Objectif déjà défini, non écrasé', [
-                                            'agency_code_oracle' => $agencyCode,
-                                            'agency_name_oracle' => $agencyName,
-                                            'existing_value' => $oldValue,
-                                            'new_value' => $newValue,
-                                            'objective_id' => $objective->id
+                                        'depth' => $depth
                                     ]);
-                                    }
                                 } else {
                                     // Log pour déboguer les non-matchs (seulement pour les premières agences)
                                     if ($depth < 2 && count($objectivesByCode) > 0 && ($agencyCode || $agencyName)) {
@@ -506,16 +460,10 @@ class DataController extends Controller
             };
             
             // Vérifier d'abord si les données sont dans une clé 'data'
-            // MAIS ne pas utiliser data.data si on a déjà hierarchicalData ou territories dans $data
-            // Utiliser une référence pour que les modifications soient persistantes
-            if (isset($data['data']) && is_array($data['data']) && !isset($data['hierarchicalData']) && !isset($data['territories'])) {
-                $dataToMerge = &$data['data'];
+            $dataToMerge = $data;
+            if (isset($data['data']) && is_array($data['data'])) {
+                $dataToMerge = $data['data'];
                 Log::info('📦 Données trouvées dans data.data, utilisation de cette structure');
-            } elseif (isset($data['hierarchicalData']) || isset($data['territories'])) {
-                Log::info('📦 Données ont hierarchicalData/territories, utilisation de la structure principale');
-                $dataToMerge = &$data;
-            } else {
-                $dataToMerge = &$data;
             }
             
             // Fusionner dans hierarchicalData (structure principale)
@@ -528,28 +476,14 @@ class DataController extends Controller
                 // Parcourir spécifiquement TERRITOIRE et ses agences
                 if (isset($dataToMerge['hierarchicalData']['TERRITOIRE'])) {
                     foreach ($dataToMerge['hierarchicalData']['TERRITOIRE'] as $territoryKey => &$territory) {
-                        // Les agences peuvent être dans 'agencies' ou 'data'
-                        // Utiliser une référence pour que les modifications soient persistantes
-                        if (isset($territory['agencies'])) {
-                            $agenciesList = &$territory['agencies'];
-                        } elseif (isset($territory['data'])) {
-                            $agenciesList = &$territory['data'];
-                        } else {
-                            $agenciesList = [];
-                        }
-                        
-                        if (is_array($agenciesList) && count($agenciesList) > 0) {
+                        if (isset($territory['agencies']) && is_array($territory['agencies'])) {
                             Log::info('Parcours des agences du territoire', [
                                 'territory' => $territoryKey,
-                                'agencies_count' => count($agenciesList),
-                                'has_agencies_key' => isset($territory['agencies']),
-                                'has_data_key' => isset($territory['data'])
+                                'agencies_count' => count($territory['agencies'])
                             ]);
-                            foreach ($agenciesList as &$agency) {
+                            foreach ($territory['agencies'] as &$agency) {
                                 $mergeRecursive($agency, 1);
                             }
-                            // Les modifications sont déjà dans $agenciesList car c'est une référence
-                            // Pas besoin de remettre, les modifications sont déjà appliquées
                         }
                         // Aussi parcourir récursivement pour les autres structures
                         $mergeRecursive($territory, 1);
@@ -558,45 +492,18 @@ class DataController extends Controller
                 
                 // Parcourir POINT SERVICES
                 if (isset($dataToMerge['hierarchicalData']['POINT SERVICES'])) {
-                    Log::info('🔍 Fusion dans POINT SERVICES', [
-                        'keys' => array_keys($dataToMerge['hierarchicalData']['POINT SERVICES'])
-                    ]);
-                    
-                    // Vérifier si POINT SERVICES a directement service_points.data (structure plate)
-                    if (isset($dataToMerge['hierarchicalData']['POINT SERVICES']['service_points']['data']) && is_array($dataToMerge['hierarchicalData']['POINT SERVICES']['service_points']['data'])) {
-                        Log::info('Parcours des points de service dans POINT SERVICES.service_points.data', [
-                            'service_points_count' => count($dataToMerge['hierarchicalData']['POINT SERVICES']['service_points']['data'])
-                        ]);
-                        foreach ($dataToMerge['hierarchicalData']['POINT SERVICES']['service_points']['data'] as &$servicePoint) {
-                            $mergeRecursive($servicePoint, 1, 'POINT SERVICES');
-                        }
-                    }
-                    
-                    // Parcourir les clés individuelles (structure hiérarchique)
                     foreach ($dataToMerge['hierarchicalData']['POINT SERVICES'] as $serviceKey => &$servicePoint) {
-                        if ($serviceKey === 'service_points') {
-                            // Déjà traité ci-dessus
-                            continue;
-                        }
                         if (isset($servicePoint['service_points']['agencies']) && is_array($servicePoint['service_points']['agencies'])) {
-                            Log::info('Parcours des agences dans service_points.agencies', [
-                                'service_key' => $serviceKey,
-                                'agencies_count' => count($servicePoint['service_points']['agencies'])
-                            ]);
                             foreach ($servicePoint['service_points']['agencies'] as &$agency) {
-                                $mergeRecursive($agency, 1, 'POINT SERVICES');
+                                $mergeRecursive($agency, 1);
                             }
                         }
                         if (isset($servicePoint['agencies']) && is_array($servicePoint['agencies'])) {
-                            Log::info('Parcours des agences dans agencies', [
-                                'service_key' => $serviceKey,
-                                'agencies_count' => count($servicePoint['agencies'])
-                            ]);
                             foreach ($servicePoint['agencies'] as &$agency) {
-                                $mergeRecursive($agency, 1, 'POINT SERVICES');
+                                $mergeRecursive($agency, 1);
                             }
                         }
-                        $mergeRecursive($servicePoint, 1, 'POINT SERVICES');
+                        $mergeRecursive($servicePoint, 1);
                     }
                 }
                 
@@ -616,20 +523,7 @@ class DataController extends Controller
                     'has_territories' => true,
                     'keys' => array_keys($dataToMerge['territories'] ?? [])
                 ]);
-                // Parcourir chaque territoire et fusionner les agences
-                foreach ($dataToMerge['territories'] as $territoryKey => &$territory) {
-                    if (isset($territory['agencies']) && is_array($territory['agencies'])) {
-                        Log::info('Parcours des agences du territoire (territories)', [
-                            'territory' => $territoryKey,
-                            'agencies_count' => count($territory['agencies'])
-                        ]);
-                        foreach ($territory['agencies'] as &$agency) {
-                            $mergeRecursive($agency, 1);
-                        }
-                    }
-                    // Récursion générale sur le territoire
-                    $mergeRecursive($territory, 1);
-                }
+                $mergeRecursive($dataToMerge['territories']);
             }
             
             // Fusionner dans les agences directement
@@ -643,68 +537,7 @@ class DataController extends Controller
             
             // Remettre les données fusionnées dans la structure originale si nécessaire
             if (isset($data['data']) && is_array($data['data'])) {
-                // Mettre à jour toutes les structures dans data['data']
-                if (isset($dataToMerge['hierarchicalData'])) {
-                    $data['data']['hierarchicalData'] = $dataToMerge['hierarchicalData'];
-                }
-                if (isset($dataToMerge['territories'])) {
-                    $data['data']['territories'] = $dataToMerge['territories'];
-                }
-                // Mettre à jour aussi les autres clés si elles existent
-                foreach ($dataToMerge as $key => $value) {
-                    if ($key !== 'hierarchicalData' && $key !== 'territories') {
-                        $data['data'][$key] = $value;
-                    }
-                }
-            } else {
-                // Si pas de structure data['data'], s'assurer que les modifications sont dans $data
-                // $dataToMerge est déjà une référence à $data, mais pour les tableaux imbriqués,
-                // on doit explicitement copier les modifications
-                if (isset($dataToMerge['hierarchicalData'])) {
-                    $data['hierarchicalData'] = $dataToMerge['hierarchicalData'];
-                }
-                if (isset($dataToMerge['territories'])) {
-                    $data['territories'] = $dataToMerge['territories'];
-                }
-                // Mettre à jour aussi les autres clés
-                foreach ($dataToMerge as $key => $value) {
-                    if ($key !== 'hierarchicalData' && $key !== 'territories' && $key !== 'data') {
-                        $data[$key] = $value;
-                    }
-                }
-            }
-            
-            // Vérifier si LAMINE GUEYE a un objectif après fusion dans hierarchicalData
-            if (isset($data['hierarchicalData']['TERRITOIRE']['territoire_dakar_ville']['data'])) {
-                foreach ($data['hierarchicalData']['TERRITOIRE']['territoire_dakar_ville']['data'] as $agency) {
-                    if (isset($agency['AGENCE']) && stripos($agency['AGENCE'], 'LAMINE GUEYE') !== false) {
-                        Log::info('🔍 Vérification LAMINE GUEYE après fusion (hierarchicalData)', [
-                            'AGENCE' => $agency['AGENCE'] ?? 'N/A',
-                            'CODE_AGENCE' => $agency['CODE_AGENCE'] ?? 'N/A',
-                            'OBJECTIF_PRODUCTION' => $agency['OBJECTIF_PRODUCTION'] ?? 'NON DÉFINI',
-                            'objectif' => $agency['objectif'] ?? 'NON DÉFINI',
-                            'all_keys' => array_keys($agency)
-                        ]);
-                        break;
-                    }
-                }
-            }
-            
-            // Vérifier aussi dans territories
-            if (isset($data['territories']['territoire_dakar_ville']['agencies'])) {
-                foreach ($data['territories']['territoire_dakar_ville']['agencies'] as $agency) {
-                    $agencyName = strtoupper($agency['name'] ?? $agency['AGENCE'] ?? '');
-                    if (strpos($agencyName, 'LAMINE') !== false || strpos($agencyName, 'GUEYE') !== false) {
-                        Log::info('🔍 Vérification LAMINE GUEYE après fusion (territories)', [
-                            'name' => $agencyName,
-                            'objectif' => $agency['objectif'] ?? 'NON DÉFINI',
-                            'OBJECTIF_CLIENT' => $agency['OBJECTIF_CLIENT'] ?? 'NON DÉFINI',
-                            'OBJECTIF_PRODUCTION' => $agency['OBJECTIF_PRODUCTION'] ?? 'NON DÉFINI',
-                            'all_keys' => array_keys($agency)
-                        ]);
-                        break;
-                    }
-                }
+                $data['data'] = $dataToMerge;
             }
             
             Log::info('✅ Fusion terminée', [
@@ -759,137 +592,11 @@ class DataController extends Controller
                 $params['year'] = (int)date('Y');
             }
             
-            // Faire l'appel à l'API Python (timeout de 5 minutes pour les calculs Oracle complexes)
-            $response = Http::timeout(300)->get($apiUrl, $params);
+            // Faire l'appel à l'API Python
+            $response = Http::timeout(30)->get($apiUrl, $params);
             
             if ($response->successful()) {
-                $data = $response->json();
-                
-                // Fusionner les objectifs PRODUCTION avec les données Oracle
-                $mergeYear = $year ? (int)$year : (int)date('Y');
-                $mergeMonth = $month ? (int)$month : null;
-                
-                // Si pas de mois mais année complète, ne pas filtrer par mois
-                if (!$mergeMonth && $year) {
-                    $mergeMonth = null;
-                } elseif (!$mergeMonth) {
-                    $mergeMonth = (int)date('n');
-                }
-                
-                Log::info('🔄 Début fusion des objectifs PRODUCTION', [
-                    'year' => $mergeYear,
-                    'month' => $mergeMonth,
-                    'data_structure' => [
-                        'has_hierarchicalData' => isset($data['hierarchicalData']),
-                        'has_territories' => isset($data['territories']),
-                        'keys' => array_keys($data ?? [])
-                    ],
-                    'raw_data_keys' => array_keys($data ?? []),
-                    'raw_data_sample' => isset($data['hierarchicalData']) ? array_keys($data['hierarchicalData']) : 'N/A',
-                    'is_array' => is_array($data),
-                    'is_numeric_array' => isset($data[0]) && is_array($data[0])
-                ]);
-                
-                // Les données peuvent être dans $data directement ou dans $data['data']
-                $actualData = $data;
-                if (isset($data['hierarchicalData']) || isset($data['territories'])) {
-                    // Les données sont dans une structure hiérarchique - fusionner directement
-                    Log::info('📦 Données PRODUCTION dans structure hiérarchique (hierarchicalData/territories)', [
-                        'has_hierarchicalData' => isset($data['hierarchicalData']),
-                        'has_territories' => isset($data['territories']),
-                        'hierarchicalData_keys' => isset($data['hierarchicalData']) ? array_keys($data['hierarchicalData']) : []
-                    ]);
-                    // Fusionner directement - la fonction retourne les données modifiées
-                    $data = $this->mergeObjectivesWithData($data, 'PRODUCTION', $mergeYear, $mergeMonth);
-                    
-                    // Vérifier que la fusion a bien fonctionné pour AGENCE LAMINE GUEYE dans hierarchicalData
-                    // Vérifier dans hierarchicalData.TERRITOIRE.territoire_dakar_ville.data
-                    if (isset($data['hierarchicalData']['TERRITOIRE']['territoire_dakar_ville']['data'])) {
-                        foreach ($data['hierarchicalData']['TERRITOIRE']['territoire_dakar_ville']['data'] as &$agency) {
-                            if (isset($agency['AGENCE']) && stripos($agency['AGENCE'], 'LAMINE GUEYE') !== false) {
-                                Log::info('🔍 AGENCE LAMINE GUEYE trouvée après fusion (hierarchicalData)', [
-                                    'AGENCE' => $agency['AGENCE'] ?? 'N/A',
-                                    'CODE_AGENCE' => $agency['CODE_AGENCE'] ?? 'N/A',
-                                    'OBJECTIF_PRODUCTION' => $agency['OBJECTIF_PRODUCTION'] ?? 'NON DÉFINI',
-                                    'objectif' => $agency['objectif'] ?? 'NON DÉFINI',
-                                    'all_keys' => array_keys($agency)
-                                ]);
-                                break;
-                            }
-                        }
-                    }
-                    // Vérifier aussi dans territories
-                    if (isset($data['territories']['territoire_dakar_ville']['data'])) {
-                        foreach ($data['territories']['territoire_dakar_ville']['data'] as &$agency) {
-                            if (isset($agency['AGENCE']) && stripos($agency['AGENCE'], 'LAMINE GUEYE') !== false) {
-                                Log::info('🔍 AGENCE LAMINE GUEYE trouvée après fusion (territories)', [
-                                    'AGENCE' => $agency['AGENCE'] ?? 'N/A',
-                                    'CODE_AGENCE' => $agency['CODE_AGENCE'] ?? 'N/A',
-                                    'OBJECTIF_PRODUCTION' => $agency['OBJECTIF_PRODUCTION'] ?? 'NON DÉFINI',
-                                    'objectif' => $agency['objectif'] ?? 'NON DÉFINI'
-                                ]);
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // Les données sont déjà modifiées par référence dans $data
-                    Log::info('✅ Données PRODUCTION fusionnées retournées au client (structure hiérarchique)');
-                    return response()->json($data);
-                } elseif (isset($data['data']) && is_array($data['data'])) {
-                    $actualData = $data['data'];
-                    Log::info('📦 Données PRODUCTION trouvées dans data.data');
-                } elseif (is_array($data) && isset($data[0]) && is_array($data[0]) && !isset($data['hierarchicalData']) && !isset($data['territories'])) {
-                    // Les données sont directement un tableau d'agences (format plat)
-                    Log::info('📦 Données PRODUCTION sont un tableau direct d\'agences', [
-                        'count' => count($data),
-                        'first_agency_sample' => isset($data[0]) ? array_keys($data[0]) : []
-                    ]);
-                    // Fusionner directement sur le tableau - la fonction modifie par référence
-                    $actualData = $this->mergeObjectivesWithData($data, 'PRODUCTION', $mergeYear, $mergeMonth);
-                    // Les données fusionnées sont déjà dans $data (modifiées par référence)
-                    // Vérifier que la fusion a bien fonctionné pour AGENCE LAMINE GUEYE
-                    $lamineGueyeFound = false;
-                    foreach ($data as $index => $agency) {
-                        if (isset($agency['AGENCE']) && stripos($agency['AGENCE'], 'LAMINE GUEYE') !== false) {
-                            $lamineGueyeFound = true;
-                            Log::info('🔍 AGENCE LAMINE GUEYE trouvée après fusion (tableau direct)', [
-                                'index' => $index,
-                                'AGENCE' => $agency['AGENCE'] ?? 'N/A',
-                                'CODE_AGENCE' => $agency['CODE_AGENCE'] ?? 'N/A',
-                                'OBJECTIF_PRODUCTION' => $agency['OBJECTIF_PRODUCTION'] ?? 'NON DÉFINI',
-                                'objectif' => $agency['objectif'] ?? 'NON DÉFINI',
-                                'all_keys' => array_keys($agency)
-                            ]);
-                            break;
-                        }
-                    }
-                    if (!$lamineGueyeFound) {
-                        Log::warning('⚠️ AGENCE LAMINE GUEYE non trouvée dans les données après fusion');
-                    }
-                    Log::info('✅ Données PRODUCTION fusionnées retournées au client (tableau direct)', [
-                        'count_after_merge' => count($data)
-                    ]);
-                    // Retourner dans un format que le frontend peut traiter
-                    // Le frontend attend soit hierarchicalData, soit territories, soit data
-                    return response()->json(['data' => $data]);
-                } else {
-                    Log::info('📦 Données PRODUCTION dans data directement');
-                }
-                
-                // Fusionner et récupérer le résultat
-                $mergedData = $this->mergeObjectivesWithData($actualData, 'PRODUCTION', $mergeYear, $mergeMonth);
-                
-                // Remettre les données fusionnées dans la structure originale
-                if (isset($data['data']) && is_array($data['data'])) {
-                    $data['data'] = $mergedData;
-                } else {
-                    $data = $mergedData;
-                }
-                
-                Log::info('✅ Données PRODUCTION fusionnées retournées au client');
-                
-                return response()->json($data);
+                return response()->json($response->json());
             }
             
             // En cas d'erreur, retourner le message d'erreur
@@ -952,50 +659,11 @@ class DataController extends Controller
                 $params['year'] = (int)date('Y');
             }
             
-            // Faire l'appel à l'API Python (timeout de 5 minutes pour les calculs Oracle complexes)
-            $response = Http::timeout(300)->get($apiUrl, $params);
+            // Faire l'appel à l'API Python
+            $response = Http::timeout(30)->get($apiUrl, $params);
             
             if ($response->successful()) {
-                $data = $response->json();
-                
-                // Fusionner les objectifs PRODUCTION_VOLUME avec les données Oracle
-                $mergeYear = $year ? (int)$year : (int)date('Y');
-                $mergeMonth = $month ? (int)$month : null;
-                
-                if (!$mergeMonth && $year) {
-                    $mergeMonth = null;
-                } elseif (!$mergeMonth) {
-                    $mergeMonth = (int)date('n');
-                }
-                
-                Log::info('🔄 Début fusion des objectifs PRODUCTION VOLUME', [
-                    'year' => $mergeYear,
-                    'month' => $mergeMonth
-                ]);
-                
-                // Les données peuvent être dans $data directement ou dans $data['data']
-                $actualData = $data;
-                if (isset($data['hierarchicalData']) || isset($data['territories'])) {
-                    // Les données sont dans une structure hiérarchique - fusionner directement
-                    $data = $this->mergeObjectivesWithData($data, 'PRODUCTION_VOLUME', $mergeYear, $mergeMonth);
-                    Log::info('✅ Données PRODUCTION VOLUME fusionnées retournées au client (structure hiérarchique)');
-                    return response()->json($data);
-                } elseif (isset($data['data']) && is_array($data['data'])) {
-                    $actualData = $data['data'];
-                }
-                
-                $actualData = $this->mergeObjectivesWithData($actualData, 'PRODUCTION_VOLUME', $mergeYear, $mergeMonth);
-                
-                // Remettre les données fusionnées dans la structure originale
-                if (isset($data['data'])) {
-                    $data['data'] = $actualData;
-                } else {
-                    $data = $actualData;
-                }
-                
-                Log::info('✅ Données PRODUCTION VOLUME fusionnées retournées au client');
-                
-                return response()->json($data);
+                return response()->json($response->json());
             }
             
             // En cas d'erreur, retourner le message d'erreur
@@ -1013,176 +681,6 @@ class DataController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Exception lors de l\'appel API Python Production Volume', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json([
-                'error' => 'Erreur de connexion au service Python',
-                'detail' => $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    /**
-     * Récupère les données d'évolution de l'encours crédit depuis Oracle via l'API Python
-     */
-    public function getEncoursCreditData(Request $request): JsonResponse
-    {
-        try {
-            // Construire l'URL de l'API Python
-            $apiUrl = $this->pythonServiceUrl . '/api/oracle/data/encours-credit';
-            
-            // Récupérer les paramètres de la requête
-            $monthM = $request->input('month_m');
-            $yearM = $request->input('year_m');
-            $monthM1 = $request->input('month_m1');
-            $yearM1 = $request->input('year_m1');
-            
-            // Construire les paramètres de requête
-            $params = [];
-            if ($monthM && $yearM) {
-                $params['month_m'] = $monthM;
-                $params['year_m'] = $yearM;
-                if ($monthM1) {
-                    $params['month_m1'] = $monthM1;
-                }
-                if ($yearM1) {
-                    $params['year_m1'] = $yearM1;
-                }
-            } else {
-                // Utiliser le mois et l'année actuels par défaut
-                $params['month_m'] = (int)date('n');
-                $params['year_m'] = (int)date('Y');
-            }
-            
-            // Faire l'appel à l'API Python (timeout de 5 minutes pour les calculs Oracle complexes)
-            $response = Http::timeout(300)->get($apiUrl, $params);
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                
-                // Fusionner les objectifs ENCOURS_CREDIT avec les données Oracle
-                $mergeYear = $yearM ? (int)$yearM : (int)date('Y');
-                $mergeMonth = $monthM ? (int)$monthM : null;
-                
-                if (!$mergeMonth) {
-                    $mergeMonth = (int)date('n');
-                }
-                
-                Log::info('🔄 Début fusion des objectifs ENCOURS_CREDIT', [
-                    'year' => $mergeYear,
-                    'month' => $mergeMonth
-                ]);
-                
-                // Les données peuvent être dans $data directement ou dans $data['data']
-                $actualData = $data;
-                if (isset($data['hierarchicalData']) || isset($data['territories'])) {
-                    // Les données sont dans une structure hiérarchique - fusionner directement
-                    $data = $this->mergeObjectivesWithData($data, 'ENCOURS_CREDIT', $mergeYear, $mergeMonth);
-                    Log::info('✅ Données ENCOURS_CREDIT fusionnées retournées au client (structure hiérarchique)');
-                    return response()->json($data);
-                } elseif (isset($data['data']) && is_array($data['data'])) {
-                    $actualData = $data['data'];
-                }
-                
-                $actualData = $this->mergeObjectivesWithData($actualData, 'ENCOURS_CREDIT', $mergeYear, $mergeMonth);
-                
-                // Remettre les données fusionnées dans la structure originale
-                if (isset($data['data'])) {
-                    $data['data'] = $actualData;
-                } else {
-                    $data = $actualData;
-                }
-                
-                Log::info('✅ Données ENCOURS CRÉDIT fusionnées retournées au client');
-                
-                return response()->json($data);
-            }
-            
-            // En cas d'erreur, retourner le message d'erreur
-            $errorData = $response->json();
-            Log::error('Erreur API Python Encours Crédit', [
-                'status' => $response->status(),
-                'error' => $errorData
-            ]);
-            
-            return response()->json([
-                'error' => 'Erreur lors de la récupération des données',
-                'detail' => $errorData['detail'] ?? $response->body(),
-                'status' => $response->status()
-            ], $response->status() ?: 500);
-            
-        } catch (\Exception $e) {
-            Log::error('Exception lors de l\'appel API Python Encours Crédit', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json([
-                'error' => 'Erreur de connexion au service Python',
-                'detail' => $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    /**
-     * Récupère les données de collection depuis Oracle via l'API Python
-     */
-    public function getCollectionData(Request $request): JsonResponse
-    {
-        try {
-            // Construire l'URL de l'API Python
-            $apiUrl = $this->pythonServiceUrl . '/api/oracle/data/collection';
-            
-            // Récupérer les paramètres de la requête
-            $period = $request->input('period', 'month');
-            $zone = $request->input('zone');
-            $month = $request->input('month');
-            $year = $request->input('year');
-            $date = $request->input('date'); // Pour la période "week"
-            
-            // Construire les paramètres de requête
-            $params = ['period' => $period];
-            if ($zone) {
-                $params['zone'] = $zone;
-            }
-            if ($month) {
-                $params['month'] = $month;
-            }
-            if ($year) {
-                $params['year'] = $year;
-            }
-            if ($date) {
-                $params['date'] = $date;
-            }
-            
-            // Faire l'appel à l'API Python (timeout de 5 minutes pour les requêtes complexes)
-            $response = Http::timeout(300)->get($apiUrl, $params);
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                
-                Log::info('✅ Données collection récupérées avec succès');
-                
-                return response()->json($data);
-            }
-            
-            // En cas d'erreur, retourner le message d'erreur
-            $errorData = $response->json();
-            Log::error('Erreur API Python Collection', [
-                'status' => $response->status(),
-                'error' => $errorData
-            ]);
-            
-            return response()->json([
-                'error' => 'Erreur lors de la récupération des données',
-                'detail' => $errorData['detail'] ?? $response->body(),
-                'status' => $response->status()
-            ], $response->status() ?: 500);
-            
-        } catch (\Exception $e) {
-            Log::error('Exception lors de l\'appel API Python Collection', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);

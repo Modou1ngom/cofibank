@@ -69,6 +69,15 @@
           <p>Section Recouvrement en cours de développement</p>
         </div>
         
+        <!-- Sections DEPOT -->
+        <div v-if="activeSection === 'domiciliation-flux'" class="section-placeholder">
+          <h2>Domiciliation de flux</h2>
+          <p>Section Domiciliation de flux en cours de développement</p>
+        </div>
+        <VolumeDatSection v-if="activeSection === 'encours-dat'" />
+        <DashboardEpargneSection v-if="activeSection === 'encours-epargne'" />
+        <DepotGarantieSection v-if="activeSection === 'depot-garantie'" />
+        
         <AddObjectiveSection v-if="activeSection === 'objectives' && activeSubSection === 'add'" />
         <ValidationSection v-if="activeSection === 'objectives' && activeSubSection === 'validation'" />
         <AgencyPerformanceSection v-if="activeSection === 'performance'" />
@@ -108,6 +117,9 @@ import PrepaidCardRechargeSection from '../components/PrepaidCardRechargeSection
 import TerritoryAgencyManagement from '../components/TerritoryAgencyManagement.vue';
 import MoneyTransferSection from '../components/MoneyTransferSection.vue';
 import EnvironmentsSection from '../components/EnvironmentsSection.vue';
+import DepotGarantieSection from '../components/DepotGarantieSection.vue';
+import VolumeDatSection from '../components/VolumeDatSection.vue';
+import DashboardEpargneSection from '../components/DashboardEpargneSection.vue';
 import { ProfileManager } from '../utils/profiles.js';
 
 export default {
@@ -127,7 +139,10 @@ export default {
     PrepaidCardRechargeSection,
     TerritoryAgencyManagement,
     MoneyTransferSection,
-    EnvironmentsSection
+    EnvironmentsSection,
+    DepotGarantieSection,
+    VolumeDatSection,
+    DashboardEpargneSection
   },
   data() {
     return {
@@ -154,6 +169,8 @@ export default {
       } else if (section === 'client') {
         this.activeSubSection = null;
       } else if (section === 'collection') {
+        this.activeSubSection = null;
+      } else if (section === 'domiciliation-flux' || section === 'encours-dat' || section === 'encours-epargne' || section === 'depot-garantie') {
         this.activeSubSection = null;
       } else if (section === 'environments') {
         this.activeSubSection = null;

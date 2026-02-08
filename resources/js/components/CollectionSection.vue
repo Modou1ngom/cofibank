@@ -60,7 +60,7 @@
 
     <!-- Tableaux hiérarchiques par niveaux - Scindés en Collecte et Solde -->
     
-    <!-- Menu d'onglets pour basculer entre Collecte, Solde, Volume DAT et Epargne -->
+    <!-- Menu d'onglets pour basculer entre Collecte, Solde et Epargne -->
     <div class="tabs-menu">
       <button 
         :class="['tab-button', { active: activeTab === 'collecte' }]"
@@ -74,22 +74,7 @@
       >
         💰 SOLDE
       </button>
-      <button 
-        :class="['tab-button', { active: activeTab === 'volume_dat' }]"
-        @click="setActiveTab('volume_dat')"
-        style="opacity: 0.5; cursor: not-allowed;"
-        disabled
-      >
-        📈 VOLUME DAT (Bientôt disponible)
-      </button>
-      <button 
-        :class="['tab-button', { active: activeTab === 'epargne' }]"
-        @click="setActiveTab('epargne')"
-        style="opacity: 0.5; cursor: not-allowed;"
-        disabled
-      >
-        💵 EPARGNE (Bientôt disponible)
-      </button>
+     
     </div>
     
     <!-- Tableau COLLECTE -->
@@ -570,15 +555,6 @@
       </div>
     </div>
 
-    <!-- Tableau VOLUME DAT -->
-    <div v-if="activeTab === 'volume_dat'" class="zone-agencies-section">
-      <div class="table-container">
-        <div style="text-align: center; padding: 40px; color: #666;">
-          <p>📈 Page Volume DAT en cours de développement</p>
-          <p style="font-size: 12px; margin-top: 10px;">Cette fonctionnalité sera bientôt disponible.</p>
-        </div>
-      </div>
-    </div>
 
     <!-- Tableau EPARGNE -->
     <div v-if="activeTab === 'epargne'" class="zone-agencies-section">
@@ -1129,8 +1105,6 @@ export default {
           return data?.collecteM || data?.COLLECTE_M || totals?.collecteM || 0;
         case 'collection':
           return data?.collecteS1 || data?.COLLECTE_S1 || totals?.collecteS1 || 0;
-        case 'volume_dat':
-          return data?.volumeDat || data?.VOLUME_DAT || data?.volumeDAT || totals?.volumeDat || totals?.VOLUME_DAT || 0;
         case 'epargne':
           return data?.epargne || data?.EPARGNE || totals?.epargne || totals?.EPARGNE || 0;
         default:
@@ -1245,7 +1219,7 @@ export default {
     },
     updateChart() {
       this.$nextTick(() => {});
-    }
+    },
   },
   data() {
     const now = new Date();
@@ -1277,12 +1251,19 @@ export default {
         'TERRITOIRE_territoire_dakar_ville': false,
         'TERRITOIRE_territoire_dakar_banlieue': false,
         'TERRITOIRE_territoire_province_centre_sud': false,
-        'TERRITOIRE_territoire_province_nord': false
+        'TERRITOIRE_territoire_province_nord': false,
+        'TERRITOIRE_SOLDE': false,
+        'POINT SERVICES_SOLDE': false
       },
       hierarchicalDataFromBackend: null,
       chargeAffaireDetails: {},  // Détails par chargé d'affaire pour chaque agence
       chargeAffaireDetailsCache: new Map(),  // Cache pour les résultats par branchCode
       expandedAgencyLines: {},  // Cache pour les lignes calculées par sectionKey
+      tabDataCache: {
+        collecte: null,
+        solde: null
+      },  // Cache des données par onglet
+      cacheKey: null,  // Clé de cache basée sur les paramètres de filtrage
       servicePoints: [],
       selectedAgency: null,
       selectedChartType: 'line',
@@ -1330,6 +1311,22 @@ export default {
     activeTab(newVal) {
       // Émettre l'événement quand l'onglet change
       this.$emit('tab-changed', newVal);
+      // Utiliser le cache si disponible, sinon charger les données
+      if (newVal === 'collecte' || newVal === 'solde') {
+        const currentCacheKey = this.generateCacheKey();
+        const cachedData = this.tabDataCache[newVal];
+        
+        // Si les données sont en cache avec la même clé, les utiliser
+        if (cachedData && cachedData.cacheKey === currentCacheKey) {
+          this.hierarchicalDataFromBackend = cachedData.hierarchicalData;
+          this.chargeAffaireDetails = cachedData.chargeAffaireDetails || {};
+          this.territories = cachedData.territories || {};
+          this.servicePoints = cachedData.servicePoints || [];
+        } else {
+          // Sinon, charger les données
+          this.loadDataForPeriod();
+        }
+      }
     },
     selectedZoneProp(newVal) {
       this.selectedZone = newVal;
@@ -2238,7 +2235,6 @@ export default {
           const typeLabels = {
             'recouvrement': 'Collecte M',
             'collection': 'Collecte S1',
-            'volume_dat': 'Volume DAT',
             'epargne': 'Epargne'
           };
           const typeLabel = typeLabels[this.selectedDataType] || 'Collecte M';
@@ -2356,7 +2352,9 @@ export default {
         this.errorMessage = null;
         params._t = Date.now();
         
-        const response = await window.axios.get('/api/oracle/data/collection', { 
+        const endpoint = '/api/oracle/data/collection';
+        
+        const response = await window.axios.get(endpoint, { 
           params,
           timeout: 300000, // 5 minutes pour les requêtes complexes
           headers: {
@@ -2424,6 +2422,7 @@ export default {
             this.hierarchicalDataFromBackend = data.hierarchicalData;
             
             if (data.hierarchicalData.TERRITOIRE) {
+              if (data.hierarchicalData.TERRITOIRE) {
               // Support des nouvelles clés de zones
               const dakar_centre_ville = data.hierarchicalData.TERRITOIRE.dakar_centre_ville || data.hierarchicalData.TERRITOIRE.territoire_dakar_ville || { name: 'DAKAR CENTRE VILLE', agencies: [] };
               const dakar_banlieue = data.hierarchicalData.TERRITOIRE.dakar_banlieue || data.hierarchicalData.TERRITOIRE.territoire_dakar_banlieue || { name: 'DAKAR BANLIEUE', agencies: [] };
@@ -2470,19 +2469,20 @@ export default {
                   agencies: filteredGrandCompte
                 }
               };
-            }
-            
-            if (data.hierarchicalData['POINT SERVICES'] && data.hierarchicalData['POINT SERVICES'].service_points) {
-              const rawServicePoints = data.hierarchicalData['POINT SERVICES'].service_points.agencies || data.hierarchicalData['POINT SERVICES'].service_points.data || [];
-              this.servicePoints = this.filterAgencies(rawServicePoints);
-            }
-            
-            if (data.globalResult) {
-              this.globalResult = {
-                mois: data.globalResult.mois || 0,
-                mois1: data.globalResult.mois1 || 0,
-                evolution: data.globalResult.evolution || 0
-              };
+              }
+              
+              if (data.hierarchicalData['POINT SERVICES'] && data.hierarchicalData['POINT SERVICES'].service_points) {
+                const rawServicePoints = data.hierarchicalData['POINT SERVICES'].service_points.agencies || data.hierarchicalData['POINT SERVICES'].service_points.data || [];
+                this.servicePoints = this.filterAgencies(rawServicePoints);
+              }
+              
+              if (data.globalResult) {
+                this.globalResult = {
+                  mois: data.globalResult.mois || 0,
+                  mois1: data.globalResult.mois1 || 0,
+                  evolution: data.globalResult.evolution || 0
+                };
+              }
             }
           } else if (data.territories) {
             // Support des anciennes et nouvelles clés pour compatibilité
@@ -2584,8 +2584,31 @@ export default {
           this.errorMessage = 'Erreur de connexion. Veuillez vérifier que le service Oracle est accessible.';
         }
       } finally {
+        // Mettre en cache les données pour l'onglet actif
+        if (this.activeTab === 'collecte' || this.activeTab === 'solde') {
+          const cacheKey = this.generateCacheKey();
+          this.tabDataCache[this.activeTab] = {
+            cacheKey: cacheKey,
+            hierarchicalData: this.hierarchicalDataFromBackend,
+            chargeAffaireDetails: this.chargeAffaireDetails,
+            territories: this.territories,
+            servicePoints: this.servicePoints
+          };
+        }
         this.loading = false;
       }
+    },
+    generateCacheKey() {
+      // Générer une clé de cache basée sur les paramètres de filtrage
+      const parts = [
+        this.selectedPeriod,
+        this.selectedZone || 'all',
+        this.selectedYear,
+        this.selectedMonth,
+        this.selectedWeek,
+        this.selectedDate
+      ];
+      return parts.join('|');
     },
     loadDataForPeriod() {
       // Réinitialiser les données pour forcer la mise à jour

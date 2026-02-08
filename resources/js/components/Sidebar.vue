@@ -17,11 +17,26 @@
             📊 Performance
           </a>
         </div>
-        <div class="nav-section-header" @click.stop="selectSection('collection')" :class="{ active: activeSection === 'collection' || activeSection === 'performance-collection' }">
+        <div class="nav-section-header" @click.stop="toggleDepot" :class="{ active: activeSection === 'domiciliation-flux' || activeSection === 'encours-dat' || activeSection === 'encours-epargne' || activeSection === 'depot-garantie' }">
           <span class="nav-title">
             <span class="nav-icon">💰</span>
             <span class="nav-label">DEPOT</span>
           </span>
+          <span class="toggle-icon">{{ depotExpanded ? '▼' : '▶' }}</span>
+        </div>
+        <div v-if="depotExpanded" class="nav-section-items">
+          <a href="#" @click.stop.prevent="selectSection('collection')" class="nav-link indent" :class="{ active: activeSection === 'collection' }">
+            Domiciliation de flux
+          </a>
+          <a href="#" @click.stop.prevent="selectSection('encours-dat')" class="nav-link indent" :class="{ active: activeSection === 'encours-dat' }">
+            Encours DAT
+          </a>
+          <a href="#" @click.stop.prevent="selectSection('encours-epargne')" class="nav-link indent" :class="{ active: activeSection === 'encours-epargne' }">
+            Encours Épargne
+          </a>
+          <a href="#" @click.stop.prevent="selectSection('depot-garantie')" class="nav-link indent" :class="{ active: activeSection === 'depot-garantie' }">
+            Dépôt de Garantie
+          </a>
         </div>
        <!-- <div v-if="activeSection === 'client'" class="nav-section-items">
           <div class="nav-section">
@@ -188,6 +203,7 @@ export default {
   data() {
     return {
       clientExpanded: true,
+      depotExpanded: false,
       creditExpanded: false,
       zoneExpanded: true,
       objectivesExpanded: false,
@@ -205,7 +221,8 @@ export default {
         this.clientExpanded = true;
         this.objectivesExpanded = false;
         this.managementExpanded = false;
-      } else if (newVal === 'collection' || newVal === 'performance-collection') {
+      } else if (newVal === 'domiciliation-flux' || newVal === 'encours-dat' || newVal === 'encours-epargne' || newVal === 'depot-garantie') {
+        this.depotExpanded = true;
         this.clientExpanded = false;
         this.objectivesExpanded = false;
         this.managementExpanded = false;
@@ -266,7 +283,8 @@ export default {
       this.clientExpanded = true;
       this.objectivesExpanded = false;
       this.managementExpanded = false;
-    } else if (this.activeSection === 'collection' || this.activeSection === 'performance-collection') {
+    } else if (this.activeSection === 'domiciliation-flux' || this.activeSection === 'encours-dat' || this.activeSection === 'encours-epargne' || this.activeSection === 'depot-garantie') {
+      this.depotExpanded = true;
       this.clientExpanded = false;
       this.objectivesExpanded = false;
       this.managementExpanded = false;
@@ -329,6 +347,9 @@ export default {
     toggleClient() {
       this.clientExpanded = !this.clientExpanded;
     },
+    toggleDepot() {
+      this.depotExpanded = !this.depotExpanded;
+    },
     toggleCredit() {
       this.creditExpanded = !this.creditExpanded;
     },
@@ -359,7 +380,8 @@ export default {
         this.clientExpanded = true;
         this.objectivesExpanded = false;
         this.managementExpanded = false;
-      } else if (section === 'collection' || section === 'performance-collection') {
+      } else if (section === 'domiciliation-flux' || section === 'encours-dat' || section === 'encours-epargne' || section === 'depot-garantie') {
+        this.depotExpanded = true;
         this.clientExpanded = false;
         this.objectivesExpanded = false;
         this.managementExpanded = false;

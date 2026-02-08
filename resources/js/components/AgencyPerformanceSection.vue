@@ -75,8 +75,8 @@
         </div>
       </div>
 
-      <!-- Section NOMBRE (pour les autres types de données) -->
-      <div v-else class="performance-category" data-category="nombre">
+      <!-- Section NOMBRE (pour les autres types de données, sauf volume_dat) -->
+      <div v-else-if="dataType !== 'volume_dat'" class="performance-category" data-category="nombre">
         <div class="category-label">
           <span class="label-text">NOMBRE</span>
         </div>
@@ -200,8 +200,258 @@
         </div>
       </div>
 
-      <!-- Section VOLUME (pour les autres types de données) -->
-      <div v-else class="performance-category" data-category="volume">
+      <!-- Section ENCOURS COMPTE COURANT (pour encours_compte_courant) -->
+      <div v-if="dataType === 'encours_compte_courant'" class="performance-category" data-category="encours-compte-courant">
+        <div class="category-label">
+          <span class="label-text">ENCOURS COMPTE COURANT</span>
+        </div>
+        <div class="top-flop-container">
+          <!-- Top 5 Agence -->
+          <div class="agency-list top-list">
+            <div class="list-header top-header">
+              <div class="header-content">
+                <span class="thumbs-icon">👍</span>
+                <span class="list-title">Top 5 Agence</span>
+              </div>
+              <div class="header-decoration"></div>
+            </div>
+            <ol class="agency-items">
+              <li 
+                v-for="(agency, index) in top5EncoursCompteCourant" 
+                :key="index" 
+                class="agency-item"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <span class="agency-number-badge">{{ index + 1 }}</span>
+                <span class="agency-name">{{ agency }}</span>
+                <span class="rank-indicator top-indicator">▲</span>
+              </li>
+              <li v-if="top5EncoursCompteCourant.length === 0" class="agency-item no-data">
+                <span class="agency-name">Aucune donnée disponible</span>
+              </li>
+            </ol>
+          </div>
+
+          <!-- Flop 5 Agence -->
+          <div class="agency-list flop-list">
+            <div class="list-header flop-header">
+              <div class="header-content">
+                <span class="thumbs-icon">👎</span>
+                <span class="list-title">Flop 5 Agence</span>
+              </div>
+              <div class="header-decoration"></div>
+            </div>
+            <ol class="agency-items">
+              <li 
+                v-for="(agency, index) in flop5EncoursCompteCourant" 
+                :key="index" 
+                class="agency-item"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <span class="agency-number-badge">{{ index + 1 }}</span>
+                <span class="agency-name">{{ agency }}</span>
+                <span class="rank-indicator flop-indicator">▼</span>
+              </li>
+              <li v-if="flop5EncoursCompteCourant.length === 0" class="agency-item no-data">
+                <span class="agency-name">Aucune donnée disponible</span>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ligne de séparation rouge (pour encours_compte_courant) -->
+      <div v-if="dataType === 'encours_compte_courant'" class="separator-line">
+        <div class="separator-glow"></div>
+      </div>
+
+      <!-- Section VARIATION ENCOURS (pour encours_compte_courant) -->
+      <div v-if="dataType === 'encours_compte_courant'" class="performance-category" data-category="variation-encours">
+        <div class="category-label">
+          <span class="label-text">VARIATION ENCOURS</span>
+        </div>
+        <div class="top-flop-container">
+          <!-- Top 5 Agence -->
+          <div class="agency-list top-list">
+            <div class="list-header top-header">
+              <div class="header-content">
+                <span class="thumbs-icon">👍</span>
+                <span class="list-title">Top 5 Agence</span>
+              </div>
+              <div class="header-decoration"></div>
+            </div>
+            <ol class="agency-items">
+              <li 
+                v-for="(agency, index) in top5VariationEncours" 
+                :key="index" 
+                class="agency-item"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <span class="agency-number-badge">{{ index + 1 }}</span>
+                <span class="agency-name">{{ agency }}</span>
+                <span class="rank-indicator top-indicator">▲</span>
+              </li>
+              <li v-if="top5VariationEncours.length === 0" class="agency-item no-data">
+                <span class="agency-name">Aucune donnée disponible</span>
+              </li>
+            </ol>
+          </div>
+
+          <!-- Flop 5 Agence -->
+          <div class="agency-list flop-list">
+            <div class="list-header flop-header">
+              <div class="header-content">
+                <span class="thumbs-icon">👎</span>
+                <span class="list-title">Flop 5 Agence</span>
+              </div>
+              <div class="header-decoration"></div>
+            </div>
+            <ol class="agency-items">
+              <li 
+                v-for="(agency, index) in flop5VariationEncours" 
+                :key="index" 
+                class="agency-item"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <span class="agency-number-badge">{{ index + 1 }}</span>
+                <span class="agency-name">{{ agency }}</span>
+                <span class="rank-indicator flop-indicator">▼</span>
+              </li>
+              <li v-if="flop5VariationEncours.length === 0" class="agency-item no-data">
+                <span class="agency-name">Aucune donnée disponible</span>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section VOLUME DAT (pour volume_dat) -->
+      <div v-if="dataType === 'volume_dat'" class="performance-category" data-category="volume-dat">
+        <div class="category-label">
+          <span class="label-text">VOLUME DAT</span>
+        </div>
+        <div class="top-flop-container">
+          <!-- Top 5 Agence -->
+          <div class="agency-list top-list">
+            <div class="list-header top-header">
+              <div class="header-content">
+                <span class="thumbs-icon">👍</span>
+                <span class="list-title">Top 5 Agence</span>
+              </div>
+              <div class="header-decoration"></div>
+            </div>
+            <ol class="agency-items">
+              <li 
+                v-for="(agency, index) in top5VolumeDat" 
+                :key="index" 
+                class="agency-item"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <span class="agency-number-badge">{{ index + 1 }}</span>
+                <span class="agency-name">{{ agency }}</span>
+                <span class="rank-indicator top-indicator">▲</span>
+              </li>
+              <li v-if="top5VolumeDat.length === 0" class="agency-item no-data">
+                <span class="agency-name">Aucune donnée disponible</span>
+              </li>
+            </ol>
+          </div>
+
+          <!-- Flop 5 Agence -->
+          <div class="agency-list flop-list">
+            <div class="list-header flop-header">
+              <div class="header-content">
+                <span class="thumbs-icon">👎</span>
+                <span class="list-title">Flop 5 Agence</span>
+              </div>
+              <div class="header-decoration"></div>
+            </div>
+            <ol class="agency-items">
+              <li 
+                v-for="(agency, index) in flop5VolumeDat" 
+                :key="index" 
+                class="agency-item"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <span class="agency-number-badge">{{ index + 1 }}</span>
+                <span class="agency-name">{{ agency }}</span>
+                <span class="rank-indicator flop-indicator">▼</span>
+              </li>
+              <li v-if="flop5VolumeDat.length === 0" class="agency-item no-data">
+                <span class="agency-name">Aucune donnée disponible</span>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ligne de séparation rouge (pour volume_dat) -->
+      <div v-if="dataType === 'volume_dat'" class="separator-line">
+        <div class="separator-glow"></div>
+      </div>
+
+      <!-- Section VARIATION DAT (pour volume_dat) -->
+      <div v-if="dataType === 'volume_dat'" class="performance-category" data-category="variation-dat">
+        <div class="category-label">
+          <span class="label-text">VARIATION DAT</span>
+        </div>
+        <div class="top-flop-container">
+          <!-- Top 5 Agence -->
+          <div class="agency-list top-list">
+            <div class="list-header top-header">
+              <div class="header-content">
+                <span class="thumbs-icon">👍</span>
+                <span class="list-title">Top 5 Agence</span>
+              </div>
+              <div class="header-decoration"></div>
+            </div>
+            <ol class="agency-items">
+              <li 
+                v-for="(agency, index) in top5VariationDat" 
+                :key="index" 
+                class="agency-item"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <span class="agency-number-badge">{{ index + 1 }}</span>
+                <span class="agency-name">{{ agency }}</span>
+                <span class="rank-indicator top-indicator">▲</span>
+              </li>
+              <li v-if="top5VariationDat.length === 0" class="agency-item no-data">
+                <span class="agency-name">Aucune donnée disponible</span>
+              </li>
+            </ol>
+          </div>
+
+          <!-- Flop 5 Agence -->
+          <div class="agency-list flop-list">
+            <div class="list-header flop-header">
+              <div class="header-content">
+                <span class="thumbs-icon">👎</span>
+                <span class="list-title">Flop 5 Agence</span>
+              </div>
+              <div class="header-decoration"></div>
+            </div>
+            <ol class="agency-items">
+              <li 
+                v-for="(agency, index) in flop5VariationDat" 
+                :key="index" 
+                class="agency-item"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <span class="agency-number-badge">{{ index + 1 }}</span>
+                <span class="agency-name">{{ agency }}</span>
+                <span class="rank-indicator flop-indicator">▼</span>
+              </li>
+              <li v-if="flop5VariationDat.length === 0" class="agency-item no-data">
+                <span class="agency-name">Aucune donnée disponible</span>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section VOLUME (pour les autres types de données, sauf volume_dat et encours_compte_courant) -->
+      <div v-else-if="dataType !== 'volume_dat' && dataType !== 'encours_compte_courant'" class="performance-category" data-category="volume">
         <div class="category-label">
           <span class="label-text">VOLUME</span>
         </div>
@@ -273,7 +523,7 @@ export default {
       type: String,
       default: 'default',
       validator: (value) => {
-        return ['default', 'client', 'collection', 'credit', 'prepaid-cards', 'money-transfers', 'eps', 'divers'].includes(value);
+        return ['default', 'client', 'collection', 'credit', 'prepaid-cards', 'money-transfers', 'eps', 'divers', 'volume_dat'].includes(value);
       }
     },
     tableData: {
@@ -314,6 +564,12 @@ export default {
       // Données calculées pour la section VOLUME (autres types)
       top5Volume: [],
       flop5Volume: [],
+      // Données calculées pour la section VOLUME DAT
+      top5VolumeDat: [],
+      flop5VolumeDat: [],
+      // Données calculées pour la section VARIATION DAT
+      top5VariationDat: [],
+      flop5VariationDat: [],
       // Cache pour éviter de retraiter les mêmes données
       lastProcessedDataHash: null,
       processingTimeout: null
@@ -424,7 +680,13 @@ export default {
             }
             
             // Classer les agences
-            this.classifyAgencies(agencies);
+            if (this.dataType === 'volume_dat') {
+              this.classifyVolumeDatAgencies(agencies);
+            } else if (this.dataType === 'encours_compte_courant') {
+              this.classifyEncoursCompteCourantAgencies(agencies);
+            } else {
+              this.classifyAgencies(agencies);
+            }
           } catch (error) {
             console.error('Erreur lors du traitement des données de performance:', error);
             this.errorMessage = 'Erreur lors du traitement des données.';
@@ -471,6 +733,61 @@ export default {
           
           // Classer les agences
           this.classifyAgencies(agencies);
+        } else if (this.dataType === 'volume_dat') {
+          // Pour Volume DAT, utiliser l'endpoint volume-dat
+          const volumeDatEndpoint = '/api/oracle/data/volume-dat';
+          const volumeDatParams = {
+            period: 'month',
+            month: now.getMonth() + 1,
+            year: now.getFullYear()
+          };
+          
+          const volumeDatResponse = await window.axios.get(volumeDatEndpoint, {
+            params: volumeDatParams,
+            timeout: 120000,
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          
+          // Extraire les agences depuis la réponse
+          const agencies = extractAgencies(volumeDatResponse.data, this.dataType, this.currentCollectionTab, (agency) => this.getAgencyName(agency));
+          
+          // Pas de CAF pour Volume DAT
+          this.top5CAF = [];
+          this.flop5CAF = [];
+          
+          // Classer les agences
+          this.classifyVolumeDatAgencies(agencies);
+        } else if (this.dataType === 'encours_compte_courant') {
+          // Pour Encours Compte Courant, utiliser l'endpoint encours
+          const encoursEndpoint = '/api/oracle/data/encours';
+          const encoursParams = {
+            period: 'month',
+            month: now.getMonth() + 1,
+            year: now.getFullYear(),
+            type: 'compte-courant'
+          };
+          
+          const encoursResponse = await window.axios.get(encoursEndpoint, {
+            params: encoursParams,
+            timeout: 120000,
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          
+          // Extraire les agences depuis la réponse
+          const agencies = extractAgencies(encoursResponse.data, this.dataType, this.currentCollectionTab, (agency) => this.getAgencyName(agency));
+          
+          // Pas de CAF pour Encours
+          this.top5CAF = [];
+          this.flop5CAF = [];
+          
+          // Classer les agences
+          this.classifyEncoursCompteCourantAgencies(agencies);
         } else {
           // Pour les autres types, utiliser l'endpoint de performance
           const endpoint = '/api/oracle/data/agency-performance';
@@ -498,7 +815,13 @@ export default {
           this.flop5CAF = [];
           
           // Classer les agences
-          this.classifyAgencies(agencies);
+          if (this.dataType === 'volume_dat') {
+            this.classifyVolumeDatAgencies(agencies);
+          } else if (this.dataType === 'encours_compte_courant') {
+            this.classifyEncoursCompteCourantAgencies(agencies);
+          } else {
+            this.classifyAgencies(agencies);
+          }
         }
         
       } catch (error) {
@@ -536,6 +859,66 @@ export default {
         this.top5Volume = sortedByVolume.slice(0, 5).map(a => a.name);
         this.flop5Volume = sortedByVolume.slice(-5).reverse().map(a => a.name);
       }
+    },
+    
+    classifyEncoursCompteCourantAgencies(agencies) {
+      if (!agencies || agencies.length === 0) {
+        this.top5EncoursCompteCourant = [];
+        this.flop5EncoursCompteCourant = [];
+        this.top5VariationEncours = [];
+        this.flop5VariationEncours = [];
+        return;
+      }
+
+      // Trier par M_ENCOURS_COMPTE_COURANT (Encours du mois M)
+      const sortedByEncoursM = [...agencies].sort((a, b) => {
+        const aValue = a.mEnoursCompteCourant || a.M_ENCOURS_COMPTE_COURANT || a.mEnours || 0;
+        const bValue = b.mEnoursCompteCourant || b.M_ENCOURS_COMPTE_COURANT || b.mEnours || 0;
+        return bValue - aValue;
+      });
+      this.top5EncoursCompteCourant = sortedByEncoursM.slice(0, 5).map(a => a.name);
+      this.flop5EncoursCompteCourant = sortedByEncoursM.slice(-5).reverse().map(a => a.name);
+
+      // Trier par variation (M - M-1)
+      const sortedByVariation = [...agencies].sort((a, b) => {
+        const aM = a.mEnoursCompteCourant || a.M_ENCOURS_COMPTE_COURANT || a.mEnours || 0;
+        const aM1 = a.m1EnoursCompteCourant || a.M1_ENCOURS_COMPTE_COURANT || a.m1Enours || 0;
+        const aVariation = aM - aM1;
+        const bM = b.mEnoursCompteCourant || b.M_ENCOURS_COMPTE_COURANT || b.mEnours || 0;
+        const bM1 = b.m1EnoursCompteCourant || b.M1_ENCOURS_COMPTE_COURANT || b.m1Enours || 0;
+        const bVariation = bM - bM1;
+        return bVariation - aVariation;
+      });
+      this.top5VariationEncours = sortedByVariation.slice(0, 5).map(a => a.name);
+      this.flop5VariationEncours = sortedByVariation.slice(-5).reverse().map(a => a.name);
+    },
+    
+    classifyVolumeDatAgencies(agencies) {
+      if (!agencies || agencies.length === 0) {
+        this.top5VolumeDat = [];
+        this.flop5VolumeDat = [];
+        this.top5VariationDat = [];
+        this.flop5VariationDat = [];
+        return;
+      }
+
+      // Trier par DAT_M (Volume DAT du mois M)
+      const sortedByDatM = [...agencies].sort((a, b) => {
+        const aValue = a.datM || a.DAT_M || 0;
+        const bValue = b.datM || b.DAT_M || 0;
+        return bValue - aValue;
+      });
+      this.top5VolumeDat = sortedByDatM.slice(0, 5).map(a => a.name);
+      this.flop5VolumeDat = sortedByDatM.slice(-5).reverse().map(a => a.name);
+
+      // Trier par VARIATION_VOLUME_DA (variation du volume DAT)
+      const sortedByVariation = [...agencies].sort((a, b) => {
+        const aValue = a.variationVolumeDa || a.VARIATION_VOLUME_DA || 0;
+        const bValue = b.variationVolumeDa || b.VARIATION_VOLUME_DA || 0;
+        return bValue - aValue;
+      });
+      this.top5VariationDat = sortedByVariation.slice(0, 5).map(a => a.name);
+      this.flop5VariationDat = sortedByVariation.slice(-5).reverse().map(a => a.name);
     },
     
     extractCAFs(data) {
@@ -631,6 +1014,16 @@ export default {
         ];
         this.top5CAF = [];
         this.flop5CAF = [];
+      } else if (this.dataType === 'volume_dat') {
+        this.top5VolumeDat = [];
+        this.flop5VolumeDat = [];
+        this.top5VariationDat = [];
+        this.flop5VariationDat = [];
+      } else if (this.dataType === 'encours_compte_courant') {
+        this.top5EncoursCompteCourant = [];
+        this.flop5EncoursCompteCourant = [];
+        this.top5VariationEncours = [];
+        this.flop5VariationEncours = [];
       } else {
         this.top5Nombre = [
           'SAINT-LOUIS',

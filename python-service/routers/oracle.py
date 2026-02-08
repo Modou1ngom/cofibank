@@ -11,6 +11,9 @@ from services.production_service import get_production_nombre_data, get_producti
 from services.collection_service import get_collection_data
 from services.transfer_service import get_transfer_data
 from services.performance_service import get_agency_performance
+from services.volume_dat_service import get_volume_dat_data
+from services.encours_service import get_encours_data
+from services.depot_garantie_service import get_depot_garantie_data
 
 logger = logging.getLogger(__name__)
 
@@ -333,17 +336,185 @@ async def get_collection_data_endpoint(
         )
 
 
+@router.get("/data/volume-dat")
+async def get_volume_dat_data_endpoint(
+    period: Optional[str] = "month", 
+    zone: Optional[str] = None,
+    month: Optional[int] = None,
+    year: Optional[int] = None,
+    date: Optional[str] = None
+):
+    """
+    Récupère les données Volume DAT depuis Oracle dans le format attendu par le dashboard
+    
+    Args:
+        period: Période d'analyse ("week", "month", "year")
+        zone: Zone géographique (optionnel)
+        month: Mois à analyser (1-12) - pour period="month"
+        year: Année à analyser
+        date: Date au format YYYY-MM-DD - pour period="week"
+    
+    Structure retournée:
+    {
+        "hierarchicalData": {
+            "TERRITOIRE": {
+                "territoire_dakar_ville": {
+                    "name": "DAKAR CENTRE VILLE",
+                    "agencies": [...],
+                    "totals": {...}
+                },
+                ...
+            },
+            "POINT SERVICES": {
+                "service_points": {
+                    "agencies": [...],
+                    "totals": {...}
+                }
+            }
+        }
+    }
+    """
+    try:
+        logger.info(f"📅 Paramètres reçus pour get_volume_dat_data: period={period}, zone={zone}, month={month}, year={year}, date={date}")
+        
+        # Appeler la fonction get_volume_dat_data
+        result = get_volume_dat_data(period=period, zone=zone, month=month, year=year, date=date)
+        
+        # Retourner les données dans le format attendu par le frontend
+        return {
+            "data": {
+                "hierarchicalData": result.get('hierarchicalData', {})
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_message = str(e) if str(e) else repr(e)
+        logger.error(f"Erreur lors de la récupération des données Volume DAT: {error_message}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Erreur lors de la récupération des données Volume DAT: {error_message}"
+        )
+
+
+@router.get("/data/encours")
+async def get_encours_data_endpoint(
+    period: Optional[str] = "month", 
+    zone: Optional[str] = None,
+    month: Optional[int] = None,
+    year: Optional[int] = None,
+    date: Optional[str] = None,
+    type: Optional[str] = "compte-courant"
+):
+    """
+    Récupère les données Encours depuis Oracle
+    
+    Args:
+        period: Période d'analyse ("month", "year", "week")
+        zone: Zone géographique (optionnel)
+        month: Mois à analyser (1-12)
+        year: Année à analyser
+        date: Date pour la période semaine (format YYYY-MM-DD)
+        type: Type d'encours ("compte-courant", "epargne-simple", "epargne-pep-simple", "epargne-projet")
+    
+    Returns:
+        Dictionnaire avec les données Encours organisées par zones
+    """
+    try:
+        logger.info(f"📅 Paramètres reçus pour get_encours_data: period={period}, zone={zone}, month={month}, year={year}, date={date}, type={type}")
+        result = get_encours_data(period=period, zone=zone, month=month, year=year, date=date, encours_type=type)
+        return {
+            "data": {
+                "hierarchicalData": result.get('hierarchicalData', {})
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_message = str(e) if str(e) else repr(e)
+        logger.error(f"Erreur lors de la récupération des données Encours: {error_message}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Erreur lors de la récupération des données Encours: {error_message}"
+        )
+
+
+@router.get("/data/depot-garantie")
+async def get_depot_garantie_data_endpoint(
+    period: Optional[str] = "month", 
+    zone: Optional[str] = None,
+    month: Optional[int] = None,
+    year: Optional[int] = None,
+    date: Optional[str] = None
+):
+    """
+    Récupère les données Dépôt de Garantie depuis Oracle dans le format attendu par le dashboard
+    
+    Args:
+        period: Période d'analyse ("week", "month", "year")
+        zone: Zone géographique (optionnel)
+        month: Mois à analyser (1-12) - pour period="month"
+        year: Année à analyser
+        date: Date au format YYYY-MM-DD - pour period="week"
+    
+    Structure retournée:
+    {
+        "hierarchicalData": {
+            "TERRITOIRE": {
+                "territoire_dakar_ville": {
+                    "name": "DAKAR CENTRE VILLE",
+                    "agencies": [...],
+                    "totals": {...}
+                },
+                ...
+            },
+            "POINT SERVICES": {
+                "service_points": {
+                    "agencies": [...],
+                    "totals": {...}
+                }
+            }
+        }
+    }
+    """
+    try:
+        logger.info(f"📅 Paramètres reçus pour get_depot_garantie_data: period={period}, zone={zone}, month={month}, year={year}, date={date}")
+        
+        # Appeler la fonction get_depot_garantie_data
+        result = get_depot_garantie_data(period=period, zone=zone, month=month, year=year, date=date)
+        
+        # Retourner les données dans le format attendu par le frontend
+        return {
+            "data": {
+                "hierarchicalData": result.get('hierarchicalData', {})
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_message = str(e) if str(e) else repr(e)
+        logger.error(f"Erreur lors de la récupération des données Dépôt de Garantie: {error_message}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Erreur lors de la récupération des données Dépôt de Garantie: {error_message}"
+        )
+
+
 @router.get("/data/transfers")
 async def get_transfer_data_endpoint(
+    period: Optional[str] = "month",
     month: Optional[int] = None,
-    year: Optional[int] = None
+    year: Optional[int] = None,
+    date: Optional[str] = None
 ):
     """
     Récupère les données de transferts d'argent depuis Oracle
     
     Args:
+        period: Période d'analyse ("week", "month", "year"). Par défaut "month".
         month: Mois à analyser (1-12). Si non fourni, utilise le mois courant.
         year: Année à analyser. Si non fourni, utilise l'année courante.
+        date: Date au format YYYY-MM-DD - pour period="week"
     
     Returns:
         Données de transferts d'argent par agence et par service avec:
@@ -351,8 +522,8 @@ async def get_transfer_data_endpoint(
         - Résumé par service de transfert (volume et commission)
     """
     try:
-        logger.info(f"📅 Paramètres reçus pour get_transfer_data: month={month}, year={year}")
-        data = get_transfer_data(month=month, year=year)
+        logger.info(f"📅 Paramètres reçus pour get_transfer_data: period={period}, month={month}, year={year}, date={date}")
+        data = get_transfer_data(period=period, month=month, year=year, date=date)
         return {"data": data}
     except HTTPException:
         raise

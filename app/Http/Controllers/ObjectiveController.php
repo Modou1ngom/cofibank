@@ -130,12 +130,10 @@ class ObjectiveController extends Controller
     public function store(Request $request): JsonResponse
     {
         $rules = [
-            'type' => 'required|in:CLIENT,PRODUCTION,PRODUCTION_VOLUME,ENCOURS_CREDIT,COLLECT,PRODUCTION_ENCOURS',
+            'type' => 'required|in:CLIENT,PRODUCTION',
             'category' => 'required|in:FILIALE,TERRITOIRE,POINT SERVICES,GRAND COMPTE',
             'agency_code' => 'required|string',
-            'value' => 'nullable|integer|min:0',
-            'value_nombres' => 'nullable|integer|min:0',
-            'value_volume' => 'nullable|integer|min:0',
+            'value' => 'required|integer|min:0',
             'period' => 'required|in:month,quarter,year',
             'year' => 'required|integer|min:2020|max:2100',
             'month' => 'nullable|integer|min:1|max:12',
@@ -144,20 +142,6 @@ class ObjectiveController extends Controller
             'zone' => 'nullable|string',
             'territory' => 'nullable|string'
         ];
-
-        // Validation conditionnelle selon le type
-        $type = $request->input('type');
-        if ($type === 'PRODUCTION') {
-            // PRODUCTION : NOMBRES et VOLUME sont requis
-            $rules['value_nombres'] = 'required|integer|min:0';
-            $rules['value_volume'] = 'required|integer|min:0';
-        } elseif ($type === 'COLLECT') {
-            // COLLECT : VALUE est requis (numeric pour accepter les décimales)
-            $rules['value'] = 'required|numeric|min:0';
-        } else {
-            // Autres types : VALUE est requis (integer)
-            $rules['value'] = 'required|integer|min:0';
-        }
 
         // Ajouter les règles conditionnelles pour month et quarter
         if ($request->input('period') === 'month') {
@@ -168,20 +152,13 @@ class ObjectiveController extends Controller
 
         $validator = Validator::make($request->all(), $rules, [
             'type.required' => 'Le type d\'objectif est requis.',
-            'type.in' => 'Le type d\'objectif doit être CLIENT, PRODUCTION, PRODUCTION_VOLUME, ENCOURS_CREDIT, COLLECT ou PRODUCTION_ENCOURS.',
+            'type.in' => 'Le type d\'objectif doit être CLIENT ou PRODUCTION.',
             'category.required' => 'La catégorie est requise.',
             'category.in' => 'La catégorie doit être FILIALE, TERRITOIRE, POINT SERVICES ou GRAND COMPTE.',
             'agency_code.required' => 'Le code de l\'agence est requis.',
             'value.required' => 'La valeur de l\'objectif est requise.',
             'value.integer' => 'La valeur de l\'objectif doit être un nombre entier.',
-            'value.numeric' => 'La valeur de l\'objectif doit être un nombre.',
             'value.min' => 'La valeur de l\'objectif doit être supérieure ou égale à 0.',
-            'value_nombres.required' => 'Le nombre d\'objectifs (NOMBRES) est requis pour les objectifs de type PRODUCTION.',
-            'value_nombres.integer' => 'Le nombre d\'objectifs doit être un nombre entier.',
-            'value_nombres.min' => 'Le nombre d\'objectifs doit être supérieur ou égal à 0.',
-            'value_volume.required' => 'Le volume (VOLUME) est requis pour les objectifs de type PRODUCTION.',
-            'value_volume.integer' => 'Le volume doit être un nombre entier.',
-            'value_volume.min' => 'Le volume doit être supérieur ou égal à 0.',
             'period.required' => 'La période est requise.',
             'period.in' => 'La période doit être month, quarter ou year.',
             'year.required' => 'L\'année est requise.',
@@ -255,9 +232,7 @@ class ObjectiveController extends Controller
                 
                 // Mettre à jour l'objectif existant
                 $existingObjective->update([
-                    'value' => $data['value'] ?? $data['value_nombres'] ?? 0, // Compatibilité
-                    'value_nombres' => $data['value_nombres'] ?? null,
-                    'value_volume' => $data['value_volume'] ?? null,
+                    'value' => $data['value'],
                     'description' => $data['description'] ?? null,
                     'agency_name' => $data['agency_name'] ?? null,
                     'territory' => $data['territory'] ?? null,
@@ -283,9 +258,7 @@ class ObjectiveController extends Controller
                 'zone' => $data['zone'] ?? null,
                 'agency_code' => $data['agency_code'],
                 'agency_name' => $data['agency_name'] ?? null,
-                'value' => $data['value'] ?? $data['value_nombres'] ?? 0, // Compatibilité
-                'value_nombres' => $data['value_nombres'] ?? null,
-                'value_volume' => $data['value_volume'] ?? null,
+                'value' => $data['value'],
                 'period' => $data['period'],
                 'year' => $data['year'],
                 'month' => $data['month'] ?? null,
@@ -377,7 +350,7 @@ class ObjectiveController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'type' => 'required|in:CLIENT,PRODUCTION,PRODUCTION_VOLUME,ENCOURS_CREDIT,COLLECT,PRODUCTION_ENCOURS',
+                'type' => 'required|in:CLIENT,PRODUCTION',
                 'period' => 'required|in:month,quarter,year',
                 'year' => 'required|integer|min:2020|max:2100',
                 'month' => 'nullable|integer|min:1|max:12',
@@ -449,7 +422,7 @@ class ObjectiveController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'territory' => 'required|string',
-                'type' => 'required|in:CLIENT,PRODUCTION,PRODUCTION_VOLUME,ENCOURS_CREDIT,COLLECT,PRODUCTION_ENCOURS',
+                'type' => 'required|in:CLIENT,PRODUCTION',
                 'period' => 'required|in:month,quarter,year',
                 'year' => 'required|integer|min:2020|max:2100',
                 'month' => 'nullable|integer|min:1|max:12',
@@ -467,60 +440,9 @@ class ObjectiveController extends Controller
             $data = $validator->validated();
 
             // Récupérer l'objectif DGA validé pour ce territoire
-            // Le DGA stocke le territoire dans agency_code, mais on doit chercher par code ou nom
-            $territoryCode = $data['territory'];
-            
-            // Mapping des codes de territoire pour recherche flexible
-            $territoryVariants = [
-                'DAKAR_VILLE' => ['DAKAR_VILLE', 'Dakar Ville', 'DAKAR VILLE', 'dakar_ville', 'territoire_dakar_ville'],
-                'DAKAR_BANLIEUE' => ['DAKAR_BANLIEUE', 'Dakar Banlieue', 'DAKAR BANLIEUE', 'dakar_banlieue', 'territoire_dakar_banlieue'],
-                'PROVINCE_CENTRE_SUD' => ['PROVINCE_CENTRE_SUD', 'Province Centre-Sud', 'PROVINCE CENTRE SUD', 'province_centre_sud', 'territoire_province_centre_sud', 'PROVINCE_CENTRE-SUD'],
-                'PROVINCE_NORD' => ['PROVINCE_NORD', 'Province Nord', 'PROVINCE NORD', 'province_nord', 'territoire_province_nord']
-            ];
-            
-            // Trouver toutes les variantes possibles pour ce territoire
-            $searchTerms = [$territoryCode]; // Inclure le code original
-            foreach ($territoryVariants as $key => $variants) {
-                if (in_array($territoryCode, $variants) || $territoryCode === $key) {
-                    $searchTerms = array_merge($searchTerms, $variants);
-                    break;
-                }
-            }
-            $searchTerms = array_unique($searchTerms);
-            
-            // Log pour déboguer
-            \Log::info('Recherche objectif DGA', [
-                'territory' => $territoryCode,
-                'search_terms' => $searchTerms,
-                'type' => $data['type'],
-                'year' => $data['year'],
-                'period' => $data['period']
-            ]);
-            
             $objective = Objective::where('category', 'TERRITOIRE')
                 ->where('type', $data['type'])
-                ->where(function($query) use ($searchTerms) {
-                    // Chercher par toutes les variantes possibles
-                    $query->where(function($q) use ($searchTerms) {
-                        $first = true;
-                        foreach ($searchTerms as $term) {
-                            if ($first) {
-                                $q->where(function($subQ) use ($term) {
-                                    $subQ->where('agency_code', $term)
-                                         ->orWhere('agency_name', $term)
-                                         ->orWhere('territory', $term);
-                                });
-                                $first = false;
-                            } else {
-                                $q->orWhere(function($subQ) use ($term) {
-                                    $subQ->where('agency_code', $term)
-                                         ->orWhere('agency_name', $term)
-                                         ->orWhere('territory', $term);
-                                });
-                            }
-                        }
-                    });
-                })
+                ->where('agency_code', $data['territory']) // Le DGA stocke le territoire dans agency_code
                 ->where('year', $data['year'])
                 ->where(function($query) use ($data) {
                     if ($data['period'] === 'month' && $data['month']) {
@@ -536,9 +458,7 @@ class ObjectiveController extends Controller
                         $q2->where('code', 'DGA');
                     });
                 })
-                // Accepter les objectifs validés ET en attente de validation
-                // Le responsable de zone doit voir l'objectif DGA même s'il n'est pas encore validé
-                ->whereIn('status', ['validated', 'pending_validation'])
+                ->where('status', 'validated') // Seulement les objectifs validés
                 ->orderBy('created_at', 'desc')
                 ->first();
 
@@ -547,8 +467,6 @@ class ObjectiveController extends Controller
                     'success' => true,
                     'data' => [
                         'value' => $objective->value,
-                        'value_nombres' => $objective->value_nombres,
-                        'value_volume' => $objective->value_volume,
                         'description' => $objective->description,
                         'objective_id' => $objective->id
                     ]
@@ -564,343 +482,7 @@ class ObjectiveController extends Controller
             Log::error('Erreur lors de la récupération de l\'objectif DGA: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur interne lors de la récupération de l\'objectif DGA.'
-            ], 500);
-        }
-    }
-
-    /**
-     * Récupère la somme des objectifs déjà fixés pour les agences d'un territoire
-     * Utilisé pour calculer l'objectif restant
-     */
-    public function getAgencyObjectivesSum(Request $request): JsonResponse
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'territory' => 'required|string',
-                'type' => 'required|in:CLIENT,PRODUCTION,PRODUCTION_VOLUME,ENCOURS_CREDIT,COLLECT,PRODUCTION_ENCOURS',
-                'period' => 'required|in:month,quarter,year',
-                'year' => 'required|integer|min:2020|max:2100',
-                'month' => 'nullable|integer|min:1|max:12',
-                'quarter' => 'nullable|integer|min:1|max:4',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données invalides',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $data = $validator->validated();
-            $territoryCode = $data['territory'];
-
-            // Mapping des codes de territoire pour recherche flexible
-            $territoryVariants = [
-                'DAKAR_VILLE' => ['DAKAR_VILLE', 'Dakar Ville', 'DAKAR VILLE', 'dakar_ville', 'territoire_dakar_ville'],
-                'DAKAR_BANLIEUE' => ['DAKAR_BANLIEUE', 'Dakar Banlieue', 'DAKAR BANLIEUE', 'dakar_banlieue', 'territoire_dakar_banlieue'],
-                'PROVINCE_CENTRE_SUD' => ['PROVINCE_CENTRE_SUD', 'Province Centre-Sud', 'PROVINCE CENTRE SUD', 'province_centre_sud', 'territoire_province_centre_sud', 'PROVINCE_CENTRE-SUD'],
-                'PROVINCE_NORD' => ['PROVINCE_NORD', 'Province Nord', 'PROVINCE NORD', 'province_nord', 'territoire_province_nord']
-            ];
-            
-            // Trouver toutes les variantes possibles pour ce territoire
-            $searchTerms = [$territoryCode]; // Inclure le code original
-            foreach ($territoryVariants as $key => $variants) {
-                if (in_array($territoryCode, $variants) || $territoryCode === $key) {
-                    $searchTerms = array_merge($searchTerms, $variants);
-                    break;
-                }
-            }
-            $searchTerms = array_unique($searchTerms);
-
-            // Récupérer tous les objectifs des agences du territoire (POINT SERVICES)
-            // qui correspondent au type, période et année
-            $query = Objective::where('category', 'POINT SERVICES')
-                ->where('type', $data['type'])
-                ->where(function($q) use ($searchTerms) {
-                    foreach ($searchTerms as $term) {
-                        $q->orWhere('territory', $term);
-                    }
-                })
-                ->where('year', $data['year']);
-
-            // Filtrer par période
-            if ($data['period'] === 'month' && $data['month']) {
-                $query->where('period', 'month')->where('month', $data['month']);
-            } elseif ($data['period'] === 'quarter' && $data['quarter']) {
-                $query->where('period', 'quarter')->where('quarter', $data['quarter']);
-            } elseif ($data['period'] === 'year') {
-                $query->where('period', 'year');
-            }
-
-            // Calculer la somme
-            if ($data['type'] === 'PRODUCTION') {
-                $sumNombres = $query->sum('value_nombres') ?? 0;
-                $sumVolume = $query->sum('value_volume') ?? 0;
-                
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'value_nombres' => (int)$sumNombres,
-                        'value_volume' => (int)$sumVolume
-                    ]
-                ]);
-            } else {
-                $sumValue = $query->sum('value') ?? 0;
-                
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'value' => (int)$sumValue
-                    ]
-                ]);
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Erreur lors du calcul de la somme des objectifs des agences: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur interne lors du calcul de la somme des objectifs.'
-            ], 500);
-        }
-    }
-
-    /**
-     * Récupère les objectifs fixés pour l'agence du CHEF_AGENCE
-     * Ces objectifs sont ceux créés par le Responsable Zone pour cette agence
-     */
-    public function getAgencyObjectives(Request $request): JsonResponse
-    {
-        try {
-            $user = Auth::user();
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Utilisateur non authentifié'
-                ], 401);
-            }
-            
-            // Charger l'agence avec la relation si elle n'est pas déjà chargée
-            if (!$user->relationLoaded('agency')) {
-                $user->load('agency');
-            }
-            
-            // Si l'utilisateur n'a pas d'agence, essayer de la charger depuis la base
-            if (!$user->agency && $user->agency_id) {
-                $user->agency = \App\Models\Agency::find($user->agency_id);
-            }
-            
-            if (!$user->agency) {
-                Log::warning('Agence non trouvée pour l\'utilisateur (getCAFObjectivesSum)', [
-                    'user_id' => $user->id,
-                    'agency_id' => $user->agency_id,
-                    'profile' => $user->profile->code ?? null
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Agence non trouvée pour cet utilisateur. Veuillez contacter l\'administrateur.'
-                ], 404);
-            }
-
-            $validator = Validator::make($request->all(), [
-                'type' => 'required|in:CLIENT,PRODUCTION,PRODUCTION_VOLUME,ENCOURS_CREDIT,COLLECT,PRODUCTION_ENCOURS',
-                'period' => 'required|in:month,quarter,year',
-                'year' => 'required|integer|min:2020|max:2100',
-                'month' => 'nullable|integer|min:1|max:12',
-                'quarter' => 'nullable|integer|min:1|max:4',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données invalides',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $data = $validator->validated();
-            $agencyCode = $user->agency->code;
-
-            // Récupérer l'objectif fixé pour cette agence par le Responsable Zone
-            // Les objectifs des agences sont créés avec category='POINT SERVICES' ou 'GRAND COMPTE' et agency_code correspondant au code de l'agence
-            // On cherche aussi par agency_name au cas où le code ne correspondrait pas exactement
-            $objective = Objective::whereIn('category', ['POINT SERVICES', 'GRAND COMPTE', 'TERRITOIRE'])
-                ->where('type', $data['type'])
-                ->where(function($query) use ($agencyCode, $user) {
-                    $query->where('agency_code', $agencyCode)
-                          ->orWhere('agency_code', (string)$user->agency->id)
-                          ->orWhere('agency_name', 'like', '%' . $user->agency->name . '%');
-                })
-                ->where('year', $data['year'])
-                ->where(function($query) use ($data) {
-                    if ($data['period'] === 'month' && $data['month']) {
-                        $query->where('period', 'month')->where('month', $data['month']);
-                    } elseif ($data['period'] === 'quarter' && $data['quarter']) {
-                        $query->where('period', 'quarter')->where('quarter', $data['quarter']);
-                    } elseif ($data['period'] === 'year') {
-                        $query->where('period', 'year');
-                    }
-                })
-                ->where(function($query) {
-                    // Accepter les objectifs créés par RESPONSABLE_ZONE ou DGA
-                    $query->whereHas('creator', function($q) {
-                        $q->whereHas('profile', function($q2) {
-                            $q2->whereIn('code', ['RESPONSABLE_ZONE', 'DGA']);
-                        });
-                    });
-                })
-                // Accepter les objectifs validés ET en attente de validation
-                ->whereIn('status', ['validated', 'pending_validation'])
-                ->orderBy('created_at', 'desc')
-                ->first();
-            
-            // Log pour déboguer
-            Log::info('Recherche objectif agence', [
-                'agency_code' => $agencyCode,
-                'agency_id' => $user->agency->id,
-                'agency_name' => $user->agency->name,
-                'type' => $data['type'],
-                'year' => $data['year'],
-                'period' => $data['period'],
-                'found' => $objective ? true : false,
-                'objective_id' => $objective ? $objective->id : null
-            ]);
-
-            if ($objective) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'value' => $objective->value,
-                        'value_nombres' => $objective->value_nombres,
-                        'value_volume' => $objective->value_volume,
-                        'description' => $objective->description,
-                        'objective_id' => $objective->id,
-                        'agency_name' => $user->agency->name
-                    ]
-                ]);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Aucun objectif trouvé pour cette agence et cette période'
-            ], 404);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la récupération des objectifs de l\'agence: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur interne lors de la récupération des objectifs de l\'agence.'
-            ], 500);
-        }
-    }
-
-    /**
-     * Récupère la somme des objectifs déjà fixés pour les CAF d'une agence
-     * Utilisé pour calculer l'objectif restant à répartir entre les CAF
-     */
-    public function getCAFObjectivesSum(Request $request): JsonResponse
-    {
-        try {
-            $user = Auth::user();
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Utilisateur non authentifié'
-                ], 401);
-            }
-            
-            // Charger l'agence avec la relation si elle n'est pas déjà chargée
-            if (!$user->relationLoaded('agency')) {
-                $user->load('agency');
-            }
-            
-            // Si l'utilisateur n'a pas d'agence, essayer de la charger depuis la base
-            if (!$user->agency && $user->agency_id) {
-                $user->agency = \App\Models\Agency::find($user->agency_id);
-            }
-            
-            if (!$user->agency) {
-                Log::warning('Agence non trouvée pour l\'utilisateur (getCAFObjectivesSum)', [
-                    'user_id' => $user->id,
-                    'agency_id' => $user->agency_id,
-                    'profile' => $user->profile->code ?? null
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Agence non trouvée pour cet utilisateur. Veuillez contacter l\'administrateur.'
-                ], 404);
-            }
-
-            $validator = Validator::make($request->all(), [
-                'type' => 'required|in:CLIENT,PRODUCTION,PRODUCTION_VOLUME,ENCOURS_CREDIT,COLLECT,PRODUCTION_ENCOURS',
-                'period' => 'required|in:month,quarter,year',
-                'year' => 'required|integer|min:2020|max:2100',
-                'month' => 'nullable|integer|min:1|max:12',
-                'quarter' => 'nullable|integer|min:1|max:4',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données invalides',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $data = $validator->validated();
-            $agencyCode = $user->agency->code;
-
-            // Récupérer tous les objectifs des CAF de cette agence
-            // Les objectifs CAF sont créés avec category='TERRITOIRE' et agency_code correspondant au code de l'agence
-            $query = Objective::whereIn('category', ['TERRITOIRE', 'POINT SERVICES', 'GRAND COMPTE'])
-                ->where('type', $data['type'])
-                ->where(function($q) use ($agencyCode, $user) {
-                    $q->where('agency_code', $agencyCode)
-                      ->orWhere('agency_code', (string)$user->agency->id)
-                      ->orWhere('agency_name', 'like', '%' . $user->agency->name . '%');
-                })
-                ->where('year', $data['year'])
-                ->where(function($query) use ($data) {
-                    if ($data['period'] === 'month' && $data['month']) {
-                        $query->where('period', 'month')->where('month', $data['month']);
-                    } elseif ($data['period'] === 'quarter' && $data['quarter']) {
-                        $query->where('period', 'quarter')->where('quarter', $data['quarter']);
-                    } elseif ($data['period'] === 'year') {
-                        $query->where('period', 'year');
-                    }
-                })
-                ->whereHas('creator', function($q) {
-                    $q->whereHas('profile', function($q2) {
-                        $q2->where('code', 'CHEF_AGENCE');
-                    });
-                });
-
-            if ($data['type'] === 'PRODUCTION') {
-                $sumNombres = (int)$query->sum('value_nombres');
-                $sumVolume = (int)$query->sum('value_volume');
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'value_nombres' => $sumNombres,
-                        'value_volume' => $sumVolume
-                    ]
-                ]);
-            } else {
-                $sumValue = (int)$query->sum('value');
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'value' => $sumValue
-                    ]
-                ]);
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Erreur lors du calcul de la somme des objectifs des CAF: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur interne lors du calcul de la somme des objectifs.'
+                'message' => 'Erreur lors de la récupération de l\'objectif DGA'
             ], 500);
         }
     }

@@ -17,8 +17,6 @@ class Objective extends Model
         'agency_code',
         'agency_name',
         'value',
-        'value_nombres',
-        'value_volume',
         'period',
         'year',
         'month',
@@ -33,8 +31,6 @@ class Objective extends Model
 
     protected $casts = [
         'value' => 'integer',
-        'value_nombres' => 'integer',
-        'value_volume' => 'integer',
         'year' => 'integer',
         'month' => 'integer',
         'quarter' => 'integer',

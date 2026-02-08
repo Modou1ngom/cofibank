@@ -50,18 +50,25 @@ def calculate_month_dates(month: int, year: int) -> Dict[str, str]:
     }
 
 
-def get_transfer_data(month: Optional[int] = None, year: Optional[int] = None):
+def get_transfer_data(period: str = "month", month: Optional[int] = None, year: Optional[int] = None, date: Optional[str] = None):
     """
     Récupère les données de transferts d'argent depuis Oracle
     
     Args:
+        period: Période d'analyse ("week", "month", "year")
         month: Mois à analyser (1-12)
         year: Année à analyser
+        date: Date au format YYYY-MM-DD pour period="week"
     
     Returns:
         Dictionnaire avec les données de transferts organisées par agences et services
     """
-    logger.info(f"🔍 get_transfer_data appelé avec month={month}, year={year}")
+    logger.info(f"🔍 get_transfer_data appelé avec period={period}, month={month}, year={year}, date={date}")
+    
+    # Pour l'instant, on ne gère que la période "month"
+    if period != "month":
+        logger.warning(f"⚠️ Période '{period}' non supportée pour les transferts. Utilisation de 'month' par défaut.")
+        period = "month"
     
     # Utiliser le mois et l'année actuels si non fournis
     if not month or not year:

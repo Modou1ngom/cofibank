@@ -25,6 +25,14 @@ export function getPerformanceMetrics(dataType, collectionTab = 'collecte') {
       metrics.nombreMetric = 'sldM';
       metrics.volumeMetric = 'sldM';
     }
+  } else if (dataType === 'volume_dat') {
+    // Pour Volume DAT : nombre = DAT_M_1, volume = DAT_M
+    metrics.nombreMetric = 'datM1';
+    metrics.volumeMetric = 'datM';
+  } else if (dataType === 'encours_compte_courant') {
+    // Pour Encours Compte Courant : nombre = M1_ENCOURS_COMPTE_COURANT, volume = M_ENCOURS_COMPTE_COURANT
+    metrics.nombreMetric = 'm1EnoursCompteCourant';
+    metrics.volumeMetric = 'mEnoursCompteCourant';
   }
 
   return metrics;
@@ -43,7 +51,15 @@ export function getMetricValue(agency, metric) {
     'collecteM': agency.collecteM || agency.COLLECTE_M || 0,
     'mtEcheance': agency.mtEcheance || agency.MT_ECHEANCE || 0,
     'solde': agency.solde || agency.SOLDE || 0,
-    'sldM': agency.sldM || agency.SLD_M || 0
+    'sldM': agency.sldM || agency.SLD_M || 0,
+    'datM1': agency.datM1 || agency.DAT_M_1 || 0,
+    'datM': agency.datM || agency.DAT_M || 0,
+    'variationVolumeDa': agency.variationVolumeDa || agency.VARIATION_VOLUME_DA || 0,
+    'variationDat': agency.variationDat || agency.VARIATION_DAT || agency['VARIATION_DAT%'] || 0,
+    'm1EnoursCompteCourant': agency.m1EnoursCompteCourant || agency.M1_ENCOURS_COMPTE_COURANT || agency.m1Enours || 0,
+    'mEnoursCompteCourant': agency.mEnoursCompteCourant || agency.M_ENCOURS_COMPTE_COURANT || agency.mEnours || 0,
+    'encoursTotalM': agency.encoursTotalM || agency.ENCOURS_TOTAL_M || 0,
+    'encoursTotalM1': agency.encoursTotalM1 || agency.ENCOURS_TOTAL_M_1 || 0
   };
 
   return metricMap[metric] || 0;
@@ -96,6 +112,16 @@ export function extractAgencies(data, dataType, collectionTab, getAgencyName) {
             mtEcheance: agency.mtEcheance || agency.MT_ECHEANCE || 0,
             solde: agency.solde || agency.SOLDE || 0,
             sldM: agency.sldM || agency.SLD_M || 0,
+            datM1: agency.datM1 || agency.DAT_M_1 || 0,
+            datM: agency.datM || agency.DAT_M || 0,
+            variationVolumeDa: agency.variationVolumeDa || agency.VARIATION_VOLUME_DA || 0,
+            variationDat: agency.variationDat || agency.VARIATION_DAT || agency['VARIATION_DAT%'] || 0,
+            m1EnoursCompteCourant: agency.m1EnoursCompteCourant || agency.M1_ENCOURS_COMPTE_COURANT || agency.m1Enours || 0,
+            mEnoursCompteCourant: agency.mEnoursCompteCourant || agency.M_ENCOURS_COMPTE_COURANT || agency.mEnours || 0,
+            m1Enours: agency.m1Enours || agency.M1_ENCOURS_COMPTE_COURANT || 0,
+            mEnours: agency.mEnours || agency.M_ENCOURS_COMPTE_COURANT || 0,
+            encoursTotalM: agency.encoursTotalM || agency.ENCOURS_TOTAL_M || 0,
+            encoursTotalM1: agency.encoursTotalM1 || agency.ENCOURS_TOTAL_M_1 || 0,
             volume: volume,
             nombre: nombre
           });

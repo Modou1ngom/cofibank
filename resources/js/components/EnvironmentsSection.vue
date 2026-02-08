@@ -40,55 +40,24 @@
           <tr v-for="environment in paginatedEnvironments" :key="environment.id">
             <td class="col-name">{{ environment.name }}</td>
             <td class="col-actions">
-              <div class="action-icons">
+              <div class="action-buttons-row">
                 <button 
-                  class="action-icon" 
-                  title="Document"
-                  @click="handleAction(environment, 'document')"
+                  class="action-btn btn-view" 
+                  @click="handleAction(environment, 'view-agencies')"
                 >
-                  📄
+                  Voir les agences
                 </button>
                 <button 
-                  class="action-icon" 
-                  title="Paramètres"
-                  @click="handleAction(environment, 'settings')"
-                >
-                  ⚙️
-                </button>
-                <button 
-                  class="action-icon" 
-                  title="Voir"
-                  @click="handleAction(environment, 'view')"
-                >
-                  🔍
-                </button>
-                <button 
-                  class="action-icon" 
-                  title="Historique"
-                  @click="handleAction(environment, 'history')"
-                >
-                  🕐
-                </button>
-                <button 
-                  class="action-icon" 
-                  title="Package"
-                  @click="handleAction(environment, 'package')"
-                >
-                  📦
-                </button>
-                <button 
-                  class="action-icon" 
-                  title="Modifier"
+                  class="action-btn btn-edit" 
                   @click="handleAction(environment, 'edit')"
                 >
-                  ✏️
+                  Modifier
                 </button>
                 <button 
-                  class="action-icon delete" 
-                  title="Supprimer"
+                  class="action-btn btn-delete" 
                   @click="handleAction(environment, 'delete')"
                 >
-                  🗑️
+                  Supprimer
                 </button>
               </div>
             </td>
@@ -145,22 +114,13 @@ export default {
     return {
       searchQuery: '',
       environments: [
-        { id: 1, name: 'SENEGAL(MAR)[FLEX]' },
-        { id: 2, name: 'FINELLE[FLEX]' },
-        { id: 3, name: 'SENEGAL[NAFA]' },
-        { id: 4, name: 'TOGO[REPORT]' },
+        { id: 1, name: 'SENEGAL' },
+        
         { id: 5, name: 'TOGO' },
-        { id: 6, name: 'SENEGAL[FLEX]' },
-        { id: 7, name: "COTE D'IVOIRE" },
-        { id: 8, name: 'BURKINA' },
-        { id: 9, name: 'MALI[FLEX]' },
-        { id: 10, name: 'NIGER[REPORT]' },
-        { id: 11, name: 'BENIN' },
-        { id: 12, name: 'GUINEE' },
-        { id: 13, name: 'CAMEROUN[FLEX]' },
+     
         { id: 14, name: 'GABON' },
         { id: 15, name: 'CONGO' },
-        { id: 16, name: 'TCHAD' }
+      
       ],
       currentPage: 1,
       itemsPerPage: 8
@@ -221,22 +181,12 @@ export default {
     handleAction(environment, action) {
       console.log(`Action ${action} sur l'environnement:`, environment);
       switch (action) {
-        case 'document':
-          alert(`Ouvrir le document pour ${environment.name}`);
-          break;
-        case 'settings':
-          alert(`Ouvrir les paramètres pour ${environment.name}`);
-          break;
-        case 'view':
-          alert(`Voir les détails de ${environment.name}`);
-          break;
-        case 'history':
-          alert(`Voir l'historique de ${environment.name}`);
-          break;
-        case 'package':
-          alert(`Gérer le package pour ${environment.name}`);
+        case 'view-agencies':
+          // TODO: Implémenter l'affichage des agences pour cet environnement
+          alert(`Voir les agences de ${environment.name}`);
           break;
         case 'edit':
+          // TODO: Implémenter la modification de l'environnement
           alert(`Modifier ${environment.name}`);
           break;
         case 'delete':
@@ -404,32 +354,58 @@ export default {
   width: 40%;
 }
 
-.action-icons {
+.action-buttons-row {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.action-icon {
-  background: none;
-  border: none;
+.action-btn {
+  padding: 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  font-size: 18px;
-  padding: 4px 6px;
-  border-radius: 4px;
   transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: white;
+  color: #374151;
 }
 
-.action-icon:hover {
-  background: #f3f4f6;
-  transform: scale(1.1);
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.action-icon.delete:hover {
-  background: #fee2e2;
+.action-btn.btn-view {
+  color: #1A4D3A;
+  border-color: #1A4D3A;
+}
+
+.action-btn.btn-view:hover {
+  background: #1A4D3A;
+  color: white;
+}
+
+.action-btn.btn-edit {
+  color: #9333ea;
+  border-color: #9333ea;
+}
+
+.action-btn.btn-edit:hover {
+  background: #9333ea;
+  color: white;
+}
+
+.action-btn.btn-delete {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.action-btn.btn-delete:hover {
+  background: #dc2626;
+  color: white;
 }
 
 .no-data {
