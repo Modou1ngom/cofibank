@@ -163,9 +163,12 @@ export default {
       } else if (section === 'renouvellement' || section === 'restructuration' || section === 'commission-credit' || section === 'recouvrement') {
         this.activeSubSection = null;
       } else if (section === 'objectives') {
-        // Pour le MD, rediriger vers 'validation' au lieu de 'add'
-        const profileCode = ProfileManager.getProfileCode();
-        this.activeSubSection = profileCode === 'MD' ? 'validation' : 'add';
+        // Ne pas forcer la sous-section si elle est déjà 'add' ou 'validation'
+        // Sinon, pour le MD, rediriger vers 'validation' au lieu de 'add'
+        if (this.activeSubSection !== 'add' && this.activeSubSection !== 'validation') {
+          const profileCode = ProfileManager.getProfileCode();
+          this.activeSubSection = profileCode === 'MD' ? 'validation' : 'add';
+        }
       } else if (section === 'client') {
         this.activeSubSection = null;
       } else if (section === 'collection') {

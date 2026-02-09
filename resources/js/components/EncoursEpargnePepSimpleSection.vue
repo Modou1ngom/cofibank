@@ -1148,16 +1148,28 @@ export default {
         this.errorMessage = null;
         params._t = Date.now();
         
+        // Récupérer le token d'authentification
+        const token = localStorage.getItem('token');
+        const headers = {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Accept': 'application/json'
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const response = await window.axios.get('/api/oracle/data/encours', { 
           params,
           timeout: 300000,
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
+          headers: headers
         });
         
         let data = null;
+        
+        console.log('Réponse API complète:', response);
+        console.log('response.data:', response.data);
         
         if (response.data && response.data.data) {
           data = response.data.data;
@@ -1165,9 +1177,21 @@ export default {
           data = response.data;
         }
         
+        console.log('Données extraites:', data);
+        console.log('data.hierarchicalData:', data?.hierarchicalData);
+        
         if (data && data.hierarchicalData) {
           this.hierarchicalDataFromBackend = data.hierarchicalData;
+          console.log('Données hiérarchiques assignées:', this.hierarchicalDataFromBackend);
+        } else if (data && (data.TERRITOIRE || data['POINT SERVICES'])) {
+          // Si les données sont directement dans data sans wrapper hierarchicalData
+          this.hierarchicalDataFromBackend = {
+            TERRITOIRE: data.TERRITOIRE || {},
+            'POINT SERVICES': data['POINT SERVICES'] || {}
+          };
+          console.log('Données hiérarchiques assignées (format direct):', this.hierarchicalDataFromBackend);
         } else {
+          console.warn('Aucune donnée hiérarchique trouvée dans la réponse');
           this.hierarchicalDataFromBackend = {
             TERRITOIRE: {},
             'POINT SERVICES': {}

@@ -173,6 +173,270 @@ class DataController extends Controller
     }
 
     /**
+     * Fusionne les objectifs EPARGNE_SIMPLE et EPARGNE_PROJET avec les données Oracle
+     * et les additionne pour obtenir l'objectif total
+     */
+    private function mergeEpargneObjectivesWithData($data, $year, $month = null)
+    {
+        try {
+            // Récupérer tous les objectifs EPARGNE_SIMPLE et EPARGNE_PROJET pour cette période
+            $objectivesQuery = Objective::whereIn('type', ['EPARGNE_SIMPLE', 'EPARGNE_PROJET'])
+                ->where('year', $year);
+            
+            if ($month) {
+                $objectivesQuery->where(function($q) use ($month) {
+                    $q->where(function($q2) use ($month) {
+                        $q2->where('period', 'month')->where('month', $month);
+                    })
+                    ->orWhere('period', 'quarter')
+                    ->orWhere('period', 'year');
+                });
+            } else {
+                // Si pas de mois, prendre tous les objectifs de l'année
+                $objectivesQuery->where(function($q) {
+                    $q->where('period', 'year')
+                      ->orWhere('period', 'quarter');
+                });
+            }
+            
+            $objectives = $objectivesQuery->get();
+            
+            Log::info('Objectifs EPARGNE trouvés pour fusion', [
+                'count' => $objectives->count(),
+                'year' => $year,
+                'month' => $month
+            ]);
+            
+            // Grouper les objectifs par agence (code et nom) et additionner EPARGNE_SIMPLE + EPARGNE_PROJET
+            $objectivesByAgency = [];
+            foreach ($objectives as $objective) {
+                $code = strtoupper(trim($objective->agency_code ?? ''));
+                $name = strtoupper(trim($objective->agency_name ?? ''));
+                $key = $code ?: $name;
+                
+                if ($key) {
+                    if (!isset($objectivesByAgency[$key])) {
+                        $objectivesByAgency[$key] = [
+                            'code' => $code,
+                            'name' => $name,
+                            'total' => 0
+                        ];
+                    }
+                    $objectivesByAgency[$key]['total'] += (int)$objective->value;
+                }
+            }
+            
+            // Créer des index pour recherche rapide
+            $objectivesByCode = [];
+            $objectivesByName = [];
+            foreach ($objectivesByAgency as $key => $agencyObj) {
+                if ($agencyObj['code']) {
+                    $objectivesByCode[$agencyObj['code']] = $agencyObj['total'];
+                }
+                if ($agencyObj['name']) {
+                    $objectivesByName[$agencyObj['name']] = $agencyObj['total'];
+                }
+            }
+            
+            // Normaliser les noms pour recherche
+            $normalizeAgencyName = function($name) {
+                $name = strtoupper(trim($name ?? ''));
+                $name = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
+                $name = preg_replace('/\s+/', ' ', $name);
+                return trim($name);
+            };
+            
+            $objectivesByNormalizedCode = [];
+            $objectivesByNormalizedName = [];
+            foreach ($objectivesByAgency as $key => $agencyObj) {
+                $normalizedCode = $normalizeAgencyName($agencyObj['code']);
+                $normalizedName = $normalizeAgencyName($agencyObj['name']);
+                if ($normalizedCode) {
+                    $objectivesByNormalizedCode[$normalizedCode] = $agencyObj['total'];
+                }
+                if ($normalizedName) {
+                    $objectivesByNormalizedName[$normalizedName] = $agencyObj['total'];
+                }
+            }
+            
+            $mergedCount = 0;
+            
+            // Fonction récursive pour fusionner les objectifs dans la structure hiérarchique
+            $mergeRecursive = function(&$item, $depth = 0) use (&$mergeRecursive, &$mergedCount, $normalizeAgencyName, $objectivesByCode, $objectivesByName, $objectivesByNormalizedCode, $objectivesByNormalizedName) {
+                if (is_array($item)) {
+                    foreach ($item as $key => &$value) {
+                        if (is_array($value)) {
+                            // Extraire tous les champs possibles pour le nom/code d'agence
+                            $possibleNames = [
+                                $value['name'] ?? null,
+                                $value['AGENCE'] ?? null,
+                                $value['NOM_AGENCE'] ?? null,
+                                $value['NOM'] ?? null,
+                                $value['LIBELLE'] ?? null,
+                                $value['LIBELLE_AGENCE'] ?? null
+                            ];
+                            
+                            $possibleCodes = [
+                                $value['code'] ?? null,
+                                $value['CODE_AGENCE'] ?? null,
+                                $value['CODE'] ?? null,
+                                $value['AGENCE'] ?? null
+                            ];
+                            
+                            $agencyName = '';
+                            foreach ($possibleNames as $name) {
+                                if (!empty($name)) {
+                                    $agencyName = strtoupper(trim($name));
+                                    break;
+                                }
+                            }
+                            
+                            $agencyCode = '';
+                            foreach ($possibleCodes as $code) {
+                                if (!empty($code)) {
+                                    $agencyCode = strtoupper(trim($code));
+                                    break;
+                                }
+                            }
+                            
+                            if (empty($agencyCode) && !empty($agencyName)) {
+                                $agencyCode = $agencyName;
+                            }
+                            
+                            $normalizedAgencyName = $normalizeAgencyName($agencyName);
+                            $normalizedAgencyCode = $normalizeAgencyName($agencyCode);
+                            
+                            // Vérifier si c'est une agence
+                            $isAgency = ($agencyCode || $agencyName) && 
+                                       !isset($value['agencies']) && 
+                                       !isset($value['totals']) && 
+                                       !isset($value['service_points']);
+                            
+                            if ($isAgency && ($agencyCode || $agencyName)) {
+                                // Chercher l'objectif cumulé (EPARGNE_SIMPLE + EPARGNE_PROJET)
+                                $objectiveTotal = null;
+                                
+                                // 1. Recherche exacte par code
+                                if ($agencyCode && isset($objectivesByCode[$agencyCode])) {
+                                    $objectiveTotal = $objectivesByCode[$agencyCode];
+                                }
+                                // 2. Recherche exacte par nom
+                                elseif ($agencyName && isset($objectivesByName[$agencyName])) {
+                                    $objectiveTotal = $objectivesByName[$agencyName];
+                                }
+                                // 3. Recherche normalisée par code
+                                elseif ($normalizedAgencyCode && isset($objectivesByNormalizedCode[$normalizedAgencyCode])) {
+                                    $objectiveTotal = $objectivesByNormalizedCode[$normalizedAgencyCode];
+                                }
+                                // 4. Recherche normalisée par nom
+                                elseif ($normalizedAgencyName && isset($objectivesByNormalizedName[$normalizedAgencyName])) {
+                                    $objectiveTotal = $objectivesByNormalizedName[$normalizedAgencyName];
+                                }
+                                
+                                if ($objectiveTotal !== null) {
+                                    // Fusionner l'objectif cumulé
+                                    $oldValue = $value['objectif'] ?? $value['OBJECTIF'] ?? 0;
+                                    $value['OBJECTIF'] = (int)$objectiveTotal;
+                                    $value['objectif'] = (int)$objectiveTotal;
+                                    $mergedCount++;
+                                    
+                                    if ($mergedCount <= 5) {
+                                        Log::info('✅ Objectif EPARGNE fusionné', [
+                                            'agency_code' => $agencyCode,
+                                            'agency_name' => $agencyName,
+                                            'old_value' => $oldValue,
+                                            'new_value' => $objectiveTotal
+                                        ]);
+                                    }
+                                }
+                            }
+                            
+                            // Récursion pour les structures imbriquées
+                            if (isset($value['agencies']) && is_array($value['agencies'])) {
+                                foreach ($value['agencies'] as &$agency) {
+                                    $mergeRecursive($agency, $depth + 1);
+                                }
+                            }
+                            
+                            if (isset($value['service_points']) && is_array($value['service_points'])) {
+                                if (isset($value['service_points']['agencies']) && is_array($value['service_points']['agencies'])) {
+                                    foreach ($value['service_points']['agencies'] as &$agency) {
+                                        $mergeRecursive($agency, $depth + 1);
+                                    }
+                                }
+                            }
+                            
+                            $mergeRecursive($value, $depth + 1);
+                        }
+                    }
+                }
+            };
+            
+            // Fusionner dans hierarchicalData
+            $dataToMerge = $data;
+            if (isset($data['data']) && is_array($data['data'])) {
+                $dataToMerge = $data['data'];
+            }
+            
+            if (isset($dataToMerge['hierarchicalData'])) {
+                // Parcourir TERRITOIRE
+                if (isset($dataToMerge['hierarchicalData']['TERRITOIRE'])) {
+                    foreach ($dataToMerge['hierarchicalData']['TERRITOIRE'] as $territoryKey => &$territory) {
+                        if (isset($territory['agencies']) && is_array($territory['agencies'])) {
+                            foreach ($territory['agencies'] as &$agency) {
+                                $mergeRecursive($agency, 1);
+                            }
+                        }
+                        $mergeRecursive($territory, 1);
+                    }
+                }
+                
+                // Parcourir POINT SERVICES
+                if (isset($dataToMerge['hierarchicalData']['POINT SERVICES'])) {
+                    foreach ($dataToMerge['hierarchicalData']['POINT SERVICES'] as $serviceKey => &$servicePoint) {
+                        if (isset($servicePoint['service_points']['agencies']) && is_array($servicePoint['service_points']['agencies'])) {
+                            foreach ($servicePoint['service_points']['agencies'] as &$agency) {
+                                $mergeRecursive($agency, 1);
+                            }
+                        }
+                        if (isset($servicePoint['agencies']) && is_array($servicePoint['agencies'])) {
+                            foreach ($servicePoint['agencies'] as &$agency) {
+                                $mergeRecursive($agency, 1);
+                            }
+                        }
+                        $mergeRecursive($servicePoint, 1);
+                    }
+                }
+                
+                $mergeRecursive($dataToMerge['hierarchicalData'], 0);
+            }
+            
+            // Si pas de hierarchicalData, récursion générale
+            if (!isset($dataToMerge['hierarchicalData'])) {
+                $mergeRecursive($dataToMerge, 0);
+            }
+            
+            // Remettre les données fusionnées dans la structure originale
+            if (isset($data['data']) && is_array($data['data'])) {
+                $data['data'] = $dataToMerge;
+            }
+            
+            Log::info('✅ Fusion EPARGNE terminée', [
+                'objectifs_fusionnes' => $mergedCount,
+                'objectifs_totaux' => $objectives->count()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la fusion des objectifs EPARGNE', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+        
+        return $data;
+    }
+
+    /**
      * Fusionne les objectifs personnalisés avec les données Oracle
      */
     private function mergeObjectivesWithData($data, $type, $year, $month = null)
@@ -692,6 +956,260 @@ class DataController extends Controller
         }
     }
     
+    /**
+     * Récupère les données d'encours épargne depuis Oracle
+     */
+    public function getEncoursData(Request $request): JsonResponse
+    {
+        try {
+            $period = $request->input('period', 'month');
+            $zone = $request->input('zone');
+            $month = $request->input('month');
+            $year = $request->input('year');
+            $date = $request->input('date'); // Pour la période "week"
+            $type = $request->input('type', 'epargne-pep-simple'); // Type de filtre
+
+            // Appeler le service Oracle pour récupérer les données d'encours épargne
+            $result = $this->oracleService->getEncoursEpargneData($period, $zone, $month ? (int)$month : null, $year ? (int)$year : null, $date, $type);
+
+            if ($result['success']) {
+                $data = $result['data'];
+                
+                // Les données peuvent être dans $data directement ou dans $data['data']
+                $actualData = $data;
+                if (isset($data['data']) && is_array($data['data'])) {
+                    $actualData = $data['data'];
+                }
+                
+                // Fusionner les objectifs EPARGNE_SIMPLE et EPARGNE_PROJET (cumul des deux)
+                // Utiliser l'année et le mois de la requête, ou les valeurs actuelles
+                $mergeYear = $year ? (int)$year : (int)date('Y');
+                $mergeMonth = null;
+                
+                // Déterminer le mois selon la période
+                if ($period === 'month' && $month) {
+                    $mergeMonth = (int)$month;
+                } elseif ($period === 'week' && $date) {
+                    // Extraire le mois de la date
+                    $dateObj = \DateTime::createFromFormat('Y-m-d', $date);
+                    if ($dateObj) {
+                        $mergeMonth = (int)$dateObj->format('n');
+                    }
+                } elseif ($period === 'month') {
+                    $mergeMonth = (int)date('n');
+                }
+                
+                Log::info('🔄 Début fusion des objectifs EPARGNE', [
+                    'year' => $mergeYear,
+                    'month' => $mergeMonth,
+                    'period' => $period
+                ]);
+                
+                // Fusionner EPARGNE_SIMPLE et EPARGNE_PROJET et les additionner
+                $actualData = $this->mergeEpargneObjectivesWithData($actualData, $mergeYear, $mergeMonth);
+                
+                // Remettre les données fusionnées dans la structure originale
+                if (isset($data['data'])) {
+                    $data['data'] = $actualData;
+                } else {
+                    $data = $actualData;
+                }
+                
+                Log::info('✅ Données EPARGNE fusionnées retournées au client');
+                
+                return response()->json($data);
+            }
+
+            Log::error('Erreur lors de la récupération des données encours épargne', [
+                'error' => $result['error'],
+                'message' => $result['message']
+            ]);
+
+            return response()->json([
+                'error' => $result['error'],
+                'message' => $result['message']
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Exception lors de la récupération des données encours épargne', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Erreur interne',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupère les données de collecte depuis Oracle
+     */
+    public function getCollectionData(Request $request): JsonResponse
+    {
+        try {
+            $period = $request->input('period', 'month');
+            $zone = $request->input('zone');
+            $month = $request->input('month');
+            $year = $request->input('year');
+            $date = $request->input('date'); // Pour la période "week"
+
+            // Appeler le service Oracle pour récupérer les données de collecte
+            $result = $this->oracleService->getCollectionData($period, $zone, $month ? (int)$month : null, $year ? (int)$year : null, $date);
+
+            if ($result['success']) {
+                $data = $result['data'];
+                
+                // Les données peuvent être dans $data directement ou dans $data['data']
+                $actualData = $data;
+                if (isset($data['data']) && is_array($data['data'])) {
+                    $actualData = $data['data'];
+                }
+                
+                // Remettre les données dans la structure originale
+                if (isset($data['data'])) {
+                    $data['data'] = $actualData;
+                } else {
+                    $data = $actualData;
+                }
+                
+                return response()->json($data);
+            }
+
+            Log::error('Erreur lors de la récupération des données collecte', [
+                'error' => $result['error'],
+                'message' => $result['message']
+            ]);
+
+            return response()->json([
+                'error' => $result['error'],
+                'message' => $result['message']
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Exception lors de la récupération des données collecte', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Erreur interne',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupère les données de volume DAT depuis Oracle
+     */
+    public function getVolumeDatData(Request $request): JsonResponse
+    {
+        try {
+            $period = $request->input('period', 'month');
+            $zone = $request->input('zone');
+            $month = $request->input('month');
+            $year = $request->input('year');
+            $date = $request->input('date'); // Pour la période "week"
+
+            // Appeler le service Oracle pour récupérer les données de volume DAT
+            $result = $this->oracleService->getVolumeDatData($period, $zone, $month ? (int)$month : null, $year ? (int)$year : null, $date);
+
+            if ($result['success']) {
+                $data = $result['data'];
+                
+                // Les données peuvent être dans $data directement ou dans $data['data']
+                $actualData = $data;
+                if (isset($data['data']) && is_array($data['data'])) {
+                    $actualData = $data['data'];
+                }
+                
+                // Remettre les données dans la structure originale
+                if (isset($data['data'])) {
+                    $data['data'] = $actualData;
+                } else {
+                    $data = $actualData;
+                }
+                
+                return response()->json($data);
+            }
+
+            Log::error('Erreur lors de la récupération des données volume DAT', [
+                'error' => $result['error'],
+                'message' => $result['message']
+            ]);
+
+            return response()->json([
+                'error' => $result['error'],
+                'message' => $result['message']
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Exception lors de la récupération des données volume DAT', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Erreur interne',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupère les données de dépôt de garantie depuis Oracle
+     */
+    public function getDepotGarantieData(Request $request): JsonResponse
+    {
+        try {
+            $period = $request->input('period', 'month');
+            $zone = $request->input('zone');
+            $month = $request->input('month');
+            $year = $request->input('year');
+            $date = $request->input('date'); // Pour la période "week"
+
+            // Appeler le service Oracle pour récupérer les données de dépôt de garantie
+            $result = $this->oracleService->getDepotGarantieData($period, $zone, $month ? (int)$month : null, $year ? (int)$year : null, $date);
+
+            if ($result['success']) {
+                $data = $result['data'];
+                
+                // Les données peuvent être dans $data directement ou dans $data['data']
+                $actualData = $data;
+                if (isset($data['data']) && is_array($data['data'])) {
+                    $actualData = $data['data'];
+                }
+                
+                // Remettre les données dans la structure originale
+                if (isset($data['data'])) {
+                    $data['data'] = $actualData;
+                } else {
+                    $data = $actualData;
+                }
+                
+                return response()->json($data);
+            }
+
+            Log::error('Erreur lors de la récupération des données dépôt de garantie', [
+                'error' => $result['error'],
+                'message' => $result['message']
+            ]);
+
+            return response()->json([
+                'error' => $result['error'],
+                'message' => $result['message']
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Exception lors de la récupération des données dépôt de garantie', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Erreur interne',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     /**
      * Récupère les données d'une table spécifique
      */

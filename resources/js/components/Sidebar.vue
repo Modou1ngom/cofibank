@@ -152,8 +152,8 @@
           <span class="toggle-icon">{{ objectivesExpanded ? '▼' : '▶' }}</span>
         </div>
         <div v-if="objectivesExpanded" class="nav-section-items">
-          <a v-if="profileCode !== 'MD'" href="#" @click.stop.prevent="selectSubSection('add')" class="nav-link indent" :class="{ active: activeSubSection === 'add' }">➕ Ajouter</a>
-          <a href="#" @click.stop.prevent="selectSubSection('validation')" class="nav-link indent" :class="{ active: activeSubSection === 'validation' }">✅ Valider</a>
+          <a v-if="profileCode !== 'MD'" href="#" @click.stop.prevent="handleObjectiveSubSection('add')" class="nav-link indent" :class="{ active: activeSubSection === 'add' }">➕ Ajouter</a>
+          <a href="#" @click.stop.prevent="handleObjectiveSubSection('validation')" class="nav-link indent" :class="{ active: activeSubSection === 'validation' }">✅ Valider</a>
          
         </div>
 
@@ -377,6 +377,16 @@ export default {
     },
     toggleObjectives() {
       this.objectivesExpanded = !this.objectivesExpanded;
+      // Toujours sélectionner la section objectives quand on clique sur le header
+      this.$emit('section-selected', 'objectives');
+    },
+    handleObjectiveSubSection(subSection) {
+      // S'assurer que la section objectives est sélectionnée et définir la sous-section
+      this.$emit('section-selected', 'objectives');
+      // Utiliser setTimeout pour s'assurer que la section est bien mise à jour avant la sous-section
+      setTimeout(() => {
+        this.$emit('sub-section-selected', subSection);
+      }, 0);
     },
     toggleManagement() {
       this.managementExpanded = !this.managementExpanded;

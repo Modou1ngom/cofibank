@@ -184,6 +184,206 @@ class OracleService
     }
 
     /**
+     * Récupère les données d'encours épargne depuis Oracle
+     */
+    public function getEncoursEpargneData(string $period = 'month', ?string $zone = null, ?int $month = null, ?int $year = null, ?string $date = null, string $type = 'epargne-pep-simple'): array
+    {
+        try {
+            $params = ['period' => $period, 'type' => $type];
+            if ($zone) {
+                $params['zone'] = $zone;
+            }
+            if ($month) {
+                $params['month'] = $month;
+            }
+            if ($year) {
+                $params['year'] = $year;
+            }
+            if ($date) {
+                $params['date'] = $date;
+            }
+
+            $response = Http::timeout(120)->get("{$this->pythonServiceUrl}/api/oracle/data/encours", $params);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json()
+                ];
+            }
+
+            Log::error('Erreur API Python Encours Épargne', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erreur du service Python',
+                'message' => $response->body()
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des données encours épargne: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Erreur interne',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Récupère les données de collecte depuis Oracle
+     */
+    public function getCollectionData(string $period = 'month', ?string $zone = null, ?int $month = null, ?int $year = null, ?string $date = null): array
+    {
+        try {
+            $params = ['period' => $period];
+            if ($zone) {
+                $params['zone'] = $zone;
+            }
+            if ($month) {
+                $params['month'] = $month;
+            }
+            if ($year) {
+                $params['year'] = $year;
+            }
+            if ($date) {
+                $params['date'] = $date;
+            }
+
+            $response = Http::timeout(300)->get("{$this->pythonServiceUrl}/api/oracle/data/collection", $params);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json()
+                ];
+            }
+
+            Log::error('Erreur API Python Collection', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erreur du service Python',
+                'message' => $response->body()
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des données collection: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Erreur interne',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Récupère les données de volume DAT depuis Oracle
+     */
+    public function getVolumeDatData(string $period = 'month', ?string $zone = null, ?int $month = null, ?int $year = null, ?string $date = null): array
+    {
+        try {
+            $params = ['period' => $period];
+            if ($zone) {
+                $params['zone'] = $zone;
+            }
+            if ($month) {
+                $params['month'] = $month;
+            }
+            if ($year) {
+                $params['year'] = $year;
+            }
+            if ($date) {
+                $params['date'] = $date;
+            }
+
+            $response = Http::timeout(120)->get("{$this->pythonServiceUrl}/api/oracle/data/volume-dat", $params);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json()
+                ];
+            }
+
+            Log::error('Erreur API Python Volume DAT', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erreur du service Python',
+                'message' => $response->body()
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des données volume DAT: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Erreur interne',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Récupère les données de dépôt de garantie depuis Oracle
+     */
+    public function getDepotGarantieData(string $period = 'month', ?string $zone = null, ?int $month = null, ?int $year = null, ?string $date = null): array
+    {
+        try {
+            $params = ['period' => $period];
+            if ($zone) {
+                $params['zone'] = $zone;
+            }
+            if ($month) {
+                $params['month'] = $month;
+            }
+            if ($year) {
+                $params['year'] = $year;
+            }
+            if ($date) {
+                $params['date'] = $date;
+            }
+
+            $response = Http::timeout(120)->get("{$this->pythonServiceUrl}/api/oracle/data/depot-garantie", $params);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json()
+                ];
+            }
+
+            Log::error('Erreur API Python Dépôt de Garantie', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erreur du service Python',
+                'message' => $response->body()
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des données dépôt de garantie: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Erreur interne',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
      * Récupère les données de production depuis Oracle
      */
     public function getProductionData(string $period = 'month'): array

@@ -894,13 +894,22 @@ export default {
         this.errorMessage = null;
         params._t = Date.now();
         
+        // Récupérer le token d'authentification
+        const token = localStorage.getItem('token');
+        const headers = {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Accept': 'application/json'
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const response = await window.axios.get('/api/oracle/data/depot-garantie', { 
           params,
           timeout: 300000,
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
+          headers: headers
         });
         
         let data = null;

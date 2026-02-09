@@ -130,7 +130,7 @@ class ObjectiveController extends Controller
     public function store(Request $request): JsonResponse
     {
         $rules = [
-            'type' => 'required|in:CLIENT,PRODUCTION',
+            'type' => 'required|in:CLIENT,PRODUCTION,ENCOURS_CREDIT,COLLECT,DEPOT_GARANTIE,EPARGNE_SIMPLE,EPARGNE_PROJET',
             'category' => 'required|in:FILIALE,TERRITOIRE,POINT SERVICES,GRAND COMPTE',
             'agency_code' => 'required|string',
             'value' => 'required|integer|min:0',
@@ -152,7 +152,7 @@ class ObjectiveController extends Controller
 
         $validator = Validator::make($request->all(), $rules, [
             'type.required' => 'Le type d\'objectif est requis.',
-            'type.in' => 'Le type d\'objectif doit être CLIENT ou PRODUCTION.',
+            'type.in' => 'Le type d\'objectif doit être CLIENT, PRODUCTION, ENCOURS_CREDIT, COLLECT, DEPOT_GARANTIE, EPARGNE_SIMPLE ou EPARGNE_PROJET.',
             'category.required' => 'La catégorie est requise.',
             'category.in' => 'La catégorie doit être FILIALE, TERRITOIRE, POINT SERVICES ou GRAND COMPTE.',
             'agency_code.required' => 'Le code de l\'agence est requis.',
@@ -350,7 +350,7 @@ class ObjectiveController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'type' => 'required|in:CLIENT,PRODUCTION',
+                'type' => 'required|in:CLIENT,PRODUCTION,ENCOURS_CREDIT,COLLECT,DEPOT_GARANTIE,EPARGNE_SIMPLE,EPARGNE_PROJET',
                 'period' => 'required|in:month,quarter,year',
                 'year' => 'required|integer|min:2020|max:2100',
                 'month' => 'nullable|integer|min:1|max:12',
@@ -422,7 +422,7 @@ class ObjectiveController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'territory' => 'required|string',
-                'type' => 'required|in:CLIENT,PRODUCTION',
+                'type' => 'required|in:CLIENT,PRODUCTION,ENCOURS_CREDIT,COLLECT,DEPOT_GARANTIE,EPARGNE_SIMPLE,EPARGNE_PROJET',
                 'period' => 'required|in:month,quarter,year',
                 'year' => 'required|integer|min:2020|max:2100',
                 'month' => 'nullable|integer|min:1|max:12',
