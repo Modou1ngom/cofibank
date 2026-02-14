@@ -135,23 +135,41 @@ export default {
               }
             );
             
-            // Forcer le redimensionnement pour s'assurer qu'il prend toute la largeur
-            Plotly.Plots.resize(chartContainer.value);
+            // Mettre à jour loading avant de redimensionner pour que le conteneur soit visible
+            loading.value = false;
+            
+            // Attendre que le DOM soit mis à jour et que le conteneur soit visible
+            await nextTick();
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            // Vérifier que l'élément est visible avant de redimensionner
+            if (chartContainer.value && chartContainer.value.offsetParent !== null) {
+              try {
+                Plotly.Plots.resize(chartContainer.value);
+              } catch (resizeErr) {
+                console.warn('Erreur lors du redimensionnement du graphique:', resizeErr);
+                // Ne pas bloquer l'affichage du graphique si le resize échoue
+              }
+            }
           }
         } else {
           error.value = 'Format de données invalide reçu du serveur';
+          loading.value = false;
         }
       } catch (err) {
         console.error('Erreur lors de la génération du graphique:', err);
         error.value = err.response?.data?.message || err.message || 'Erreur lors de la génération du graphique';
-      } finally {
         loading.value = false;
       }
     };
 
     const resizeChart = () => {
-      if (chartContainer.value) {
-        Plotly.Plots.resize(chartContainer.value);
+      if (chartContainer.value && chartContainer.value.offsetParent !== null) {
+        try {
+          Plotly.Plots.resize(chartContainer.value);
+        } catch (resizeErr) {
+          console.warn('Erreur lors du redimensionnement du graphique:', resizeErr);
+        }
       }
     };
 

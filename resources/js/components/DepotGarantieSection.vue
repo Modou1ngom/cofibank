@@ -62,10 +62,8 @@
           <thead>
             <tr>
               <th>AGENCE</th>
-              <th>Objectif</th>
               <th>DEPOT_GARANTIE M1</th>
               <th>DEPOT_GARANTIE M</th>
-              <th>TRO</th>
               <th>Variation</th>
             </tr>
           </thead>
@@ -78,10 +76,8 @@
                 </button>
                 <strong>TERRITOIRE</strong>
               </td>
-              <td><strong>{{ formatNumber(territoireTotalDepotGarantie.objectif) }}</strong></td>
               <td><strong>{{ formatNumber(territoireTotalDepotGarantie.m1EncoursDepotGarantie) }}</strong></td>
               <td><strong>{{ formatNumber(territoireTotalDepotGarantie.mEncoursDepotGarantie) }}</strong></td>
-              <td><strong>{{ formatPercent(territoireTotalDepotGarantie.tro) }}</strong></td>
               <td :class="getVariationClass(territoireTotalDepotGarantie.variation)"><strong>{{ formatVariation(territoireTotalDepotGarantie.variation) }}</strong></td>
             </tr>
 
@@ -95,10 +91,8 @@
                     </button>
                     {{ territory.name }}
                   </td>
-                  <td><strong>{{ formatNumber(getDepotGarantieTotal(territory, 'objectif')) }}</strong></td>
                   <td><strong>{{ formatNumber(getDepotGarantieTotal(territory, 'm1EncoursDepotGarantie')) }}</strong></td>
                   <td><strong>{{ formatNumber(getDepotGarantieTotal(territory, 'mEncoursDepotGarantie')) }}</strong></td>
-                  <td><strong>{{ formatPercent(getDepotGarantieTotal(territory, 'tro')) }}</strong></td>
                   <td :class="getVariationClass(getDepotGarantieTotal(territory, 'variation'))"><strong>{{ formatVariation(getDepotGarantieTotal(territory, 'variation')) }}</strong></td>
                 </tr>
                 <!-- Agences dans chaque territoire -->
@@ -111,11 +105,9 @@
                     @click="selectAgency({ name: agency.name, category: 'TERRITOIRE', zone: territoryKey })"
                   >
                     <td class="level-3">{{ getAgencyName(agency) }}</td>
-                    <td>{{ formatNumber(getDepotGarantieValue(agency, 'OBJECTIF') || agency.objectif || 0) }}</td>
                     <td>{{ formatNumber(getDepotGarantieValue(agency, 'M1_ENCOURS_DEPOT_GARANTIE')) }}</td>
                     <td>{{ formatNumber(getDepotGarantieValue(agency, 'M_ENCOURS_DEPOT_GARANTIE')) }}</td>
-                    <td>{{ formatPercent(getDepotGarantieValue(agency, 'TRO') || agency.tro || 0) }}</td>
-                    <td :class="getVariationClass(getDepotGarantieValue(agency, 'VARIATION') || agency.variation || 0)">{{ formatVariation(getDepotGarantieValue(agency, 'VARIATION') || agency.variation || 0) }}</td>
+                    <td :class="getVariationClass(getVariationForAgency(agency))">{{ formatVariation(getVariationForAgency(agency)) }}</td>
                   </tr>
                 </template>
               </template>
@@ -129,10 +121,8 @@
                 </button>
                 <strong>POINT SERVICES</strong>
               </td>
-              <td><strong>{{ formatNumber(pointServicesTotalDepotGarantie.objectif) }}</strong></td>
               <td><strong>{{ formatNumber(pointServicesTotalDepotGarantie.m1EncoursDepotGarantie) }}</strong></td>
               <td><strong>{{ formatNumber(pointServicesTotalDepotGarantie.mEncoursDepotGarantie) }}</strong></td>
-              <td><strong>{{ formatPercent(pointServicesTotalDepotGarantie.tro) }}</strong></td>
               <td :class="getVariationClass(pointServicesTotalDepotGarantie.variation)"><strong>{{ formatVariation(pointServicesTotalDepotGarantie.variation) }}</strong></td>
             </tr>
             
@@ -149,11 +139,9 @@
                       @click="selectAgency({ name: agency.name, category: 'POINT SERVICES', zone: servicePointKey })"
                     >
                       <td class="level-2 service-point-cell">{{ getAgencyName(agency) }}</td>
-                      <td>{{ formatNumber(getDepotGarantieValue(agency, 'OBJECTIF') || agency.objectif || 0) }}</td>
                       <td>{{ formatNumber(getDepotGarantieValue(agency, 'M1_ENCOURS_DEPOT_GARANTIE')) }}</td>
                       <td>{{ formatNumber(getDepotGarantieValue(agency, 'M_ENCOURS_DEPOT_GARANTIE')) }}</td>
-                      <td>{{ formatPercent(getDepotGarantieValue(agency, 'TRO') || agency.tro || 0) }}</td>
-                      <td :class="getVariationClass(getDepotGarantieValue(agency, 'VARIATION') || agency.variation || 0)">{{ formatVariation(getDepotGarantieValue(agency, 'VARIATION') || agency.variation || 0) }}</td>
+                      <td :class="getVariationClass(getVariationForAgency(agency))">{{ formatVariation(getVariationForAgency(agency)) }}</td>
                     </tr>
                   </template>
                 </template>
@@ -163,20 +151,16 @@
             <!-- GRAND COMPTE -->
             <tr v-if="grandCompteDepotGarantie" class="level-3-row">
               <td class="level-3">GRAND COMPTE</td>
-              <td>{{ formatNumber(grandCompteDepotGarantie.OBJECTIF || grandCompteDepotGarantie.objectif || 0) }}</td>
               <td>{{ formatNumber(grandCompteDepotGarantie.M1_ENCOURS_DEPOT_GARANTIE || 0) }}</td>
               <td>{{ formatNumber(grandCompteDepotGarantie.M_ENCOURS_DEPOT_GARANTIE || 0) }}</td>
-              <td>{{ formatPercent(grandCompteDepotGarantie.TRO || grandCompteDepotGarantie.tro || 0) }}</td>
-              <td :class="getVariationClass(grandCompteDepotGarantie.VARIATION || grandCompteDepotGarantie.variation || 0)">{{ formatVariation(grandCompteDepotGarantie.VARIATION || grandCompteDepotGarantie.variation || 0) }}</td>
+              <td :class="getVariationClass(grandCompteDepotGarantie.VARIATION || 0)">{{ formatVariation(grandCompteDepotGarantie.VARIATION || 0) }}</td>
             </tr>
 
             <!-- Ligne TOTAL -->
             <tr class="total-row">
               <td><strong>TOTAL</strong></td>
-              <td><strong>{{ formatNumber(getGrandTotalDepotGarantie('objectif')) }}</strong></td>
               <td><strong>{{ formatNumber(getGrandTotalDepotGarantie('m1EncoursDepotGarantie')) }}</strong></td>
               <td><strong>{{ formatNumber(getGrandTotalDepotGarantie('mEncoursDepotGarantie')) }}</strong></td>
-              <td><strong>{{ formatPercent(getGrandTotalDepotGarantie('tro')) }}</strong></td>
               <td :class="getVariationClass(getGrandTotalDepotGarantie('variation'))"><strong>{{ formatVariation(getGrandTotalDepotGarantie('variation')) }}</strong></td>
             </tr>
           </tbody>
@@ -444,10 +428,14 @@ export default {
               total.m1EncoursDepotGarantie += parseFloat(this.getDepotGarantieValue(agency, 'M1_ENCOURS_DEPOT_GARANTIE') || 0);
               total.mEncoursDepotGarantie += parseFloat(this.getDepotGarantieValue(agency, 'M_ENCOURS_DEPOT_GARANTIE') || 0);
               total.tro += parseFloat(this.getDepotGarantieValue(agency, 'TRO') || agency.tro || 0);
-              total.variation += parseFloat(this.getDepotGarantieValue(agency, 'VARIATION') || agency.variation || 0);
             });
           }
         });
+      }
+      
+      // Calculer la variation à partir des totaux M et M1
+      if (total.m1EncoursDepotGarantie > 0) {
+        total.variation = ((total.mEncoursDepotGarantie - total.m1EncoursDepotGarantie) / total.m1EncoursDepotGarantie) * 100;
       }
       
       return total;
@@ -470,10 +458,14 @@ export default {
               total.m1EncoursDepotGarantie += parseFloat(this.getDepotGarantieValue(agency, 'M1_ENCOURS_DEPOT_GARANTIE') || 0);
               total.mEncoursDepotGarantie += parseFloat(this.getDepotGarantieValue(agency, 'M_ENCOURS_DEPOT_GARANTIE') || 0);
               total.tro += parseFloat(this.getDepotGarantieValue(agency, 'TRO') || agency.tro || 0);
-              total.variation += parseFloat(this.getDepotGarantieValue(agency, 'VARIATION') || agency.variation || 0);
             });
           }
         });
+      }
+      
+      // Calculer la variation à partir des totaux M et M1
+      if (total.m1EncoursDepotGarantie > 0) {
+        total.variation = ((total.mEncoursDepotGarantie - total.m1EncoursDepotGarantie) / total.m1EncoursDepotGarantie) * 100;
       }
       
       return total;
@@ -484,12 +476,21 @@ export default {
         const grandCompte = hierarchicalData.TERRITOIRE.grand_compte;
         if (grandCompte.agencies && grandCompte.agencies.length > 0) {
           const agency = grandCompte.agencies[0];
+          const m1 = this.getDepotGarantieTotal(grandCompte, 'm1EncoursDepotGarantie');
+          const m = this.getDepotGarantieTotal(grandCompte, 'mEncoursDepotGarantie');
+          let variation = 0;
+          
+          // Calculer la variation à partir des totaux M et M1
+          if (m1 > 0) {
+            variation = ((m - m1) / m1) * 100;
+          }
+          
           return {
             OBJECTIF: this.getDepotGarantieValue(agency, 'OBJECTIF') || agency.objectif || 0,
-            M1_ENCOURS_DEPOT_GARANTIE: this.getDepotGarantieTotal(grandCompte, 'm1EncoursDepotGarantie'),
-            M_ENCOURS_DEPOT_GARANTIE: this.getDepotGarantieTotal(grandCompte, 'mEncoursDepotGarantie'),
+            M1_ENCOURS_DEPOT_GARANTIE: m1,
+            M_ENCOURS_DEPOT_GARANTIE: m,
             TRO: this.getDepotGarantieValue(agency, 'TRO') || agency.tro || 0,
-            VARIATION: this.getDepotGarantieValue(agency, 'VARIATION') || agency.variation || 0
+            VARIATION: variation
           };
         }
       }
@@ -814,8 +815,33 @@ export default {
       
       return 0;
     },
+    getVariationForAgency(agency) {
+      if (!agency) return 0;
+      const m1 = this.getDepotGarantieValue(agency, 'M1_ENCOURS_DEPOT_GARANTIE');
+      const m = this.getDepotGarantieValue(agency, 'M_ENCOURS_DEPOT_GARANTIE');
+      
+      if (m1 > 0) {
+        return ((m - m1) / m1) * 100;
+      }
+      return 0;
+    },
     getDepotGarantieTotal(territory, field) {
       if (!territory || !territory.agencies) return 0;
+      
+      if (field === 'variation') {
+        // Calculer la variation à partir des totaux M et M1
+        let m1Total = 0;
+        let mTotal = 0;
+        territory.agencies.forEach(agency => {
+          m1Total += parseFloat(this.getDepotGarantieValue(agency, 'M1_ENCOURS_DEPOT_GARANTIE') || 0);
+          mTotal += parseFloat(this.getDepotGarantieValue(agency, 'M_ENCOURS_DEPOT_GARANTIE') || 0);
+        });
+        
+        if (m1Total > 0) {
+          return ((mTotal - m1Total) / m1Total) * 100;
+        }
+        return 0;
+      }
       
       let total = 0;
       territory.agencies.forEach(agency => {
@@ -823,8 +849,7 @@ export default {
           'm1EncoursDepotGarantie': 'M1_ENCOURS_DEPOT_GARANTIE',
           'mEncoursDepotGarantie': 'M_ENCOURS_DEPOT_GARANTIE',
           'objectif': 'OBJECTIF',
-          'tro': 'TRO',
-          'variation': 'VARIATION'
+          'tro': 'TRO'
         };
         
         const mappedField = fieldMap[field] || field;
@@ -834,14 +859,28 @@ export default {
       return total;
     },
     getGrandTotalDepotGarantie(field) {
+      if (field === 'variation') {
+        // Calculer la variation à partir des totaux M et M1
+        const m1Total = this.territoireTotalDepotGarantie.m1EncoursDepotGarantie + 
+                       this.pointServicesTotalDepotGarantie.m1EncoursDepotGarantie +
+                       (this.grandCompteDepotGarantie ? (this.grandCompteDepotGarantie.M1_ENCOURS_DEPOT_GARANTIE || 0) : 0);
+        const mTotal = this.territoireTotalDepotGarantie.mEncoursDepotGarantie + 
+                      this.pointServicesTotalDepotGarantie.mEncoursDepotGarantie +
+                      (this.grandCompteDepotGarantie ? (this.grandCompteDepotGarantie.M_ENCOURS_DEPOT_GARANTIE || 0) : 0);
+        
+        if (m1Total > 0) {
+          return ((mTotal - m1Total) / m1Total) * 100;
+        }
+        return 0;
+      }
+      
       let total = this.territoireTotalDepotGarantie[field] + this.pointServicesTotalDepotGarantie[field];
       if (this.grandCompteDepotGarantie) {
         const fieldMap = {
           'm1EncoursDepotGarantie': 'M1_ENCOURS_DEPOT_GARANTIE',
           'mEncoursDepotGarantie': 'M_ENCOURS_DEPOT_GARANTIE',
           'objectif': 'OBJECTIF',
-          'tro': 'TRO',
-          'variation': 'VARIATION'
+          'tro': 'TRO'
         };
         const mappedField = fieldMap[field] || field;
         total += parseFloat(this.grandCompteDepotGarantie[mappedField] || 0);
@@ -934,6 +973,9 @@ export default {
             'POINT SERVICES': {}
           };
         }
+        
+        // Charger les objectifs depuis Laravel et les fusionner avec les données Oracle
+        await this.loadObjectives();
       } catch (error) {
         this.hierarchicalDataFromBackend = {
           TERRITOIRE: {},
@@ -955,8 +997,186 @@ export default {
           this.errorMessage = 'Erreur de connexion. Veuillez vérifier que le service Oracle est accessible.';
         }
       } finally {
+        // Charger les objectifs même en cas d'erreur partielle
+        try {
+          await this.loadObjectives();
+        } catch (error) {
+          console.warn('⚠️ Erreur lors du chargement des objectifs:', error);
+        }
         this.loading = false;
       }
+    },
+    async loadObjectives() {
+      // Charger les objectifs DEPOT_GARANTIE depuis l'API Laravel
+      try {
+        const token = localStorage.getItem('token');
+        const params = {
+          type: 'DEPOT_GARANTIE',
+          period: this.selectedPeriod === 'week' ? 'month' : this.selectedPeriod,
+          year: this.selectedYear
+        };
+        
+        // Ajouter les paramètres selon la période
+        if (this.selectedPeriod === 'month') {
+          params.month = this.selectedMonth;
+        } else if (this.selectedPeriod === 'quarter') {
+          params.quarter = Math.ceil(this.selectedMonth / 3);
+        } else if (this.selectedPeriod === 'week') {
+          if (this.selectedDate) {
+            const date = new Date(this.selectedDate);
+            params.month = date.getMonth() + 1;
+          }
+        }
+        
+        console.log('📊 Chargement des objectifs DEPOT_GARANTIE avec params:', params);
+        
+        const response = await window.axios.get('/api/objectives', {
+          params: params,
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.data && response.data.success && response.data.data) {
+          const objectives = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+          console.log('✅ Objectifs DEPOT_GARANTIE chargés:', objectives.length);
+          
+          // Créer un map des objectifs par agency_code et agency_name
+          const objectivesMapByCode = {};
+          const objectivesMapByName = {};
+          objectives.forEach(obj => {
+            const agencyCode = (obj.agency_code || '').toString().trim();
+            const agencyName = (obj.agency_name || '').toString().trim();
+            const value = obj.value || 0;
+            
+            if (agencyCode) {
+              objectivesMapByCode[agencyCode] = value;
+            }
+            if (agencyName) {
+              const normalizedName = agencyName.toUpperCase().trim();
+              objectivesMapByName[normalizedName] = value;
+            }
+          });
+          
+          console.log('📊 Objectifs par code:', Object.keys(objectivesMapByCode).length, objectivesMapByCode);
+          console.log('📊 Objectifs par nom:', Object.keys(objectivesMapByName).length, objectivesMapByName);
+          
+          // Fusionner les objectifs avec les données Oracle
+          this.mergeObjectivesWithOracleData(objectivesMapByCode, objectivesMapByName);
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur lors du chargement des objectifs:', error);
+      }
+    },
+    mergeObjectivesWithOracleData(objectivesMapByCode, objectivesMapByName) {
+      let matchedCount = 0;
+      let totalAgencies = 0;
+      
+      // Fusionner les objectifs avec les agences dans les territoires
+      if (this.hierarchicalDataFromBackend && this.hierarchicalDataFromBackend.TERRITOIRE) {
+        Object.keys(this.hierarchicalDataFromBackend.TERRITOIRE).forEach(territoryKey => {
+          const territory = this.hierarchicalDataFromBackend.TERRITOIRE[territoryKey];
+          if (territory.agencies && Array.isArray(territory.agencies)) {
+            territory.agencies.forEach(agency => {
+              totalAgencies++;
+              const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+              const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+              
+              // Chercher l'objectif par code d'agence d'abord
+              let objectiveValue = null;
+              if (agencyCode && objectivesMapByCode[agencyCode]) {
+                objectiveValue = objectivesMapByCode[agencyCode];
+                matchedCount++;
+                console.log(`✅ Objectif trouvé par code pour ${agencyName} (${agencyCode}):`, objectiveValue);
+              } else if (agencyName) {
+                const normalizedName = agencyName.toUpperCase().trim();
+                if (objectivesMapByName[normalizedName]) {
+                  objectiveValue = objectivesMapByName[normalizedName];
+                  matchedCount++;
+                  console.log(`✅ Objectif trouvé par nom pour ${agencyName}:`, objectiveValue);
+                } else {
+                  // Log pour déboguer les correspondances manquées
+                  console.log(`⚠️ Aucun objectif trouvé pour ${agencyName} (code: ${agencyCode})`);
+                  console.log('   Codes disponibles:', Object.keys(objectivesMapByCode));
+                  console.log('   Noms disponibles:', Object.keys(objectivesMapByName));
+                }
+              }
+              
+              if (objectiveValue !== null) {
+                // Utiliser Vue.set pour forcer la réactivité
+                this.$set(agency, 'objectif', objectiveValue);
+                this.$set(agency, 'OBJECTIF', objectiveValue);
+                this.$set(agency, 'OBJECTIF_DEPOT_GARANTIE', objectiveValue);
+              }
+            });
+          }
+        });
+      }
+      
+      // Fusionner avec les points de service
+      if (this.hierarchicalDataFromBackend && this.hierarchicalDataFromBackend['POINT SERVICES']) {
+        Object.keys(this.hierarchicalDataFromBackend['POINT SERVICES']).forEach(servicePointKey => {
+          const servicePoint = this.hierarchicalDataFromBackend['POINT SERVICES'][servicePointKey];
+          if (servicePoint && servicePoint.agencies && Array.isArray(servicePoint.agencies)) {
+            servicePoint.agencies.forEach(agency => {
+              const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+              const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+              
+              let objectiveValue = null;
+              if (agencyCode && objectivesMapByCode[agencyCode]) {
+                objectiveValue = objectivesMapByCode[agencyCode];
+              } else if (agencyName) {
+                const normalizedName = agencyName.toUpperCase().trim();
+                if (objectivesMapByName[normalizedName]) {
+                  objectiveValue = objectivesMapByName[normalizedName];
+                }
+              }
+              
+              if (objectiveValue !== null) {
+                // Utiliser Vue.set pour forcer la réactivité
+                this.$set(agency, 'objectif', objectiveValue);
+                this.$set(agency, 'OBJECTIF', objectiveValue);
+                this.$set(agency, 'OBJECTIF_DEPOT_GARANTIE', objectiveValue);
+              }
+            });
+          }
+        });
+      }
+      
+      // Fusionner avec le grand compte
+      if (this.hierarchicalDataFromBackend && this.hierarchicalDataFromBackend.TERRITOIRE && this.hierarchicalDataFromBackend.TERRITOIRE.grand_compte) {
+        const grandCompte = this.hierarchicalDataFromBackend.TERRITOIRE.grand_compte;
+        if (grandCompte.agencies && Array.isArray(grandCompte.agencies) && grandCompte.agencies.length > 0) {
+          grandCompte.agencies.forEach(agency => {
+            const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+            const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+            
+            let objectiveValue = null;
+            if (agencyCode && objectivesMapByCode[agencyCode]) {
+              objectiveValue = objectivesMapByCode[agencyCode];
+            } else if (agencyName) {
+              const normalizedName = agencyName.toUpperCase().trim();
+              if (objectivesMapByName[normalizedName]) {
+                objectiveValue = objectivesMapByName[normalizedName];
+              }
+            }
+            
+            if (objectiveValue !== null) {
+              // Utiliser Vue.set pour forcer la réactivité
+              this.$set(agency, 'objectif', objectiveValue);
+              this.$set(agency, 'OBJECTIF', objectiveValue);
+              this.$set(agency, 'OBJECTIF_DEPOT_GARANTIE', objectiveValue);
+            }
+          });
+        }
+      }
+      
+      console.log(`📊 Fusion terminée: ${matchedCount} objectifs assignés sur ${totalAgencies} agences`);
+      
+      // Forcer une mise à jour de Vue pour que les computed properties se recalculent
+      this.$nextTick(() => {
+        this.$forceUpdate();
+      });
     },
     loadDataForPeriod() {
       this.hierarchicalDataFromBackend = null;

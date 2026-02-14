@@ -1,7 +1,7 @@
 {
-  "name": "cofibank/dashboard",
+  "name": "cofidash/dashboard",
   "type": "project",
-  "description": "Dashboard bancaire COFIBANK",
+  "description": "Dashboard bancaire COFIdash",
   "keywords": ["laravel", "vue", "dashboard", "banking"],
   "license": "MIT",
   "require": {

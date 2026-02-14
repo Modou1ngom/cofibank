@@ -63,10 +63,12 @@
             <tr>
               <th>AGENCE</th>
               <th>Objectif</th>
-              <th v-if="showColumn('mEnoursProjet')">EPARGNE PROJET M</th>
-              <th v-if="showColumn('mEnours')">EPARGNE M</th>
-              <th v-if="showColumn('m1Enours')">EPARGNE M1</th>
-              <th v-if="showColumn('m1EnoursProjet')">EPARGNE PROJET M1</th>
+              <th v-if="isCombinedView">EPARGNE M</th>
+              <th v-if="isCombinedView">EPARGNE M1</th>
+              <th v-if="!isCombinedView && showColumn('mEnoursProjet')">EPARGNE PROJET M</th>
+              <th v-if="!isCombinedView && showColumn('mEnours')">EPARGNE M</th>
+              <th v-if="!isCombinedView && showColumn('m1Enours')">EPARGNE M1</th>
+              <th v-if="!isCombinedView && showColumn('m1EnoursProjet')">EPARGNE PROJET M1</th>
               <th>TRO</th>
               <th>Variation</th>
               <th>Dette rattachée</th>
@@ -81,53 +83,59 @@
                 </button>
                 <strong>TERRITOIRE</strong>
               </td>
-              <td><strong>{{ formatNumber(getTerritoireTotal('objectif')) }}</strong></td>
-              <td v-if="showColumn('mEnoursProjet')"><strong>{{ formatNumber((territoireTotal.mEnoursProjet || 0)) }}</strong></td>
-              <td v-if="showColumn('mEnours')"><strong>{{ formatNumber(territoireTotal.mEnours) }}</strong></td>
-              <td v-if="showColumn('m1Enours')"><strong>{{ formatNumber(territoireTotal.m1Enours) }}</strong></td>
-              <td v-if="showColumn('m1EnoursProjet')"><strong>{{ formatNumber((territoireTotal.m1EnoursProjet || 0)) }}</strong></td>
-              <td><strong>{{ formatPercent(getTerritoireTotal('tro')) }}</strong></td>
-              <td :class="getVariationClass(getTerritoireTotal('variation'))"><strong>{{ formatVariation(getTerritoireTotal('variation')) }}</strong></td>
-              <td><strong>{{ formatNumber(getTerritoireTotal('detteRattachee')) }}</strong></td>
+              <td><strong>{{ formatNumber(getObjectiveForLevel('territoire')) }}</strong></td>
+              <td v-if="isCombinedView"><strong>{{ formatNumber(getCombinedEpargneM('territoire')) }}</strong></td>
+              <td v-if="isCombinedView"><strong>{{ formatNumber(getCombinedEpargneM1('territoire')) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('mEnoursProjet')"><strong>{{ formatNumber((territoireTotal.mEnoursProjet || 0)) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('mEnours')"><strong>{{ formatNumber(territoireTotal.mEnours) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('m1Enours')"><strong>{{ formatNumber(territoireTotal.m1Enours) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('m1EnoursProjet')"><strong>{{ formatNumber((territoireTotal.m1EnoursProjet || 0)) }}</strong></td>
+              <td><strong>{{ formatPercent(getTROForLevel('territoire')) }}</strong></td>
+              <td :class="getVariationClass(getVariationForLevel('territoire'))"><strong>{{ formatVariation(getVariationForLevel('territoire')) }}</strong></td>
+              <td><strong>{{ formatNumber(isCombinedView ? getCombinedTotal('territoire', 'detteRattachee') : getTerritoireTotal('detteRattachee')) }}</strong></td>
             </tr>
 
             <!-- Territoires dans TERRITOIRE -->
             <template v-if="expandedSections['TERRITOIRE']">
               <template v-for="(territory, territoryKey) in filteredHierarchicalData.TERRITOIRE" :key="territoryKey">
-                <tr v-if="territoryKey !== 'grand_compte'" class="level-2-row" @click="toggleExpand(`TERRITOIRE_${territoryKey}`)">
+                <tr v-if="territoryKey !== 'grand_compte' && hasTerritoryData(territory)" class="level-2-row" @click="toggleExpand(`TERRITOIRE_${territoryKey}`)">
                   <td class="level-2">
                     <button class="expand-btn" @click.stop="toggleExpand(`TERRITOIRE_${territoryKey}`)">
                       {{ expandedSections[`TERRITOIRE_${territoryKey}`] ? '−' : '+' }}
                     </button>
                     {{ territory.name }}
                   </td>
-                  <td><strong>{{ formatNumber(getTerritoryTotal(territory, 'objectif')) }}</strong></td>
-                  <td v-if="showColumn('mEnoursProjet')"><strong>{{ formatNumber(getTerritoryTotal(territory, 'mEnoursProjet')) }}</strong></td>
-                  <td v-if="showColumn('mEnours')"><strong>{{ formatNumber(getTerritoryTotal(territory, 'mEnours')) }}</strong></td>
-                  <td v-if="showColumn('m1Enours')"><strong>{{ formatNumber(getTerritoryTotal(territory, 'm1Enours')) }}</strong></td>
-                  <td v-if="showColumn('m1EnoursProjet')"><strong>{{ formatNumber(getTerritoryTotal(territory, 'm1EnoursProjet')) }}</strong></td>
-                  <td><strong>{{ formatPercent(getTerritoryTotal(territory, 'tro')) }}</strong></td>
-                  <td :class="getVariationClass(getTerritoryTotal(territory, 'variation'))"><strong>{{ formatVariation(getTerritoryTotal(territory, 'variation')) }}</strong></td>
-                  <td><strong>{{ formatNumber(getTerritoryTotal(territory, 'detteRattachee')) }}</strong></td>
+                  <td><strong>{{ formatNumber(getObjectiveForTerritory(territory)) }}</strong></td>
+                  <td v-if="isCombinedView"><strong>{{ formatNumber(getCombinedEpargneMForTerritory(territory)) }}</strong></td>
+                  <td v-if="isCombinedView"><strong>{{ formatNumber(getCombinedEpargneM1ForTerritory(territory)) }}</strong></td>
+                  <td v-if="!isCombinedView && showColumn('mEnoursProjet')"><strong>{{ formatNumber(getTerritoryTotal(territory, 'mEnoursProjet')) }}</strong></td>
+                  <td v-if="!isCombinedView && showColumn('mEnours')"><strong>{{ formatNumber(getTerritoryTotal(territory, 'mEnours')) }}</strong></td>
+                  <td v-if="!isCombinedView && showColumn('m1Enours')"><strong>{{ formatNumber(getTerritoryTotal(territory, 'm1Enours')) }}</strong></td>
+                  <td v-if="!isCombinedView && showColumn('m1EnoursProjet')"><strong>{{ formatNumber(getTerritoryTotal(territory, 'm1EnoursProjet')) }}</strong></td>
+                  <td><strong>{{ formatPercent(getTROForTerritory(territory)) }}</strong></td>
+                  <td :class="getVariationClass(getVariationForTerritory(territory))"><strong>{{ formatVariation(getVariationForTerritory(territory)) }}</strong></td>
+                  <td><strong>{{ formatNumber(isCombinedView ? getCombinedTotalForTerritory(territory, 'detteRattachee') : getTerritoryTotal(territory, 'detteRattachee')) }}</strong></td>
                 </tr>
                 <!-- Agences dans chaque territoire -->
                 <template v-if="expandedSections[`TERRITOIRE_${territoryKey}`]">
                   <tr 
-                    v-for="agency in territory.agencies" 
+                    v-for="agency in territory.agencies.filter(a => hasAgencyData(a))" 
                     :key="agency.name" 
                     class="level-3-row"
                     :class="{ 'selected-agency': selectedAgency && selectedAgency.name === agency.name && selectedAgency.category === 'TERRITOIRE' && selectedAgency.zone === territoryKey }"
                     @click="selectAgency({ name: agency.name, category: 'TERRITOIRE', zone: territoryKey })"
                   >
                     <td class="level-3">{{ getAgencyName(agency) }}</td>
-                    <td>{{ formatNumber(getEncoursValue(agency, 'OBJECTIF') || agency.objectif || 0) }}</td>
-                    <td v-if="showColumn('mEnoursProjet')">{{ formatNumber(getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE_PROJET')) }}</td>
-                    <td v-if="showColumn('mEnours')">{{ formatNumber(getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE')) }}</td>
-                    <td v-if="showColumn('m1Enours')">{{ formatNumber(getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE')) }}</td>
-                    <td v-if="showColumn('m1EnoursProjet')">{{ formatNumber(getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE_PROJET')) }}</td>
-                    <td>{{ formatPercent(getEncoursValue(agency, 'TRO') || agency.tro || 0) }}</td>
-                    <td :class="getVariationClass(getEncoursValue(agency, 'VARIATION') || agency.variation || 0)">{{ formatVariation(getEncoursValue(agency, 'VARIATION') || agency.variation || 0) }}</td>
-                    <td>{{ formatNumber(getEncoursValue(agency, 'DETTE_RATTACHEE') || agency.detteRattachee || 0) }}</td>
+                    <td>{{ formatNumber(getObjectiveForAgency(agency)) }}</td>
+                    <td v-if="isCombinedView">{{ formatNumber(getCombinedEpargneMForAgency(agency)) }}</td>
+                    <td v-if="isCombinedView">{{ formatNumber(getCombinedEpargneM1ForAgency(agency)) }}</td>
+                    <td v-if="!isCombinedView && showColumn('mEnoursProjet')">{{ formatNumber(getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE_PROJET')) }}</td>
+                    <td v-if="!isCombinedView && showColumn('mEnours')">{{ formatNumber(getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE')) }}</td>
+                    <td v-if="!isCombinedView && showColumn('m1Enours')">{{ formatNumber(getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE')) }}</td>
+                    <td v-if="!isCombinedView && showColumn('m1EnoursProjet')">{{ formatNumber(getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE_PROJET')) }}</td>
+                    <td>{{ formatPercent(getTROForAgency(agency)) }}</td>
+                    <td :class="getVariationClass(getVariationForAgency(agency))">{{ formatVariation(getVariationForAgency(agency)) }}</td>
+                    <td>{{ formatNumber(isCombinedView ? getCombinedDetteRattacheeForAgency(agency) : (getEncoursValue(agency, 'DETTE_RATTACHEE') || agency.detteRattachee || 0)) }}</td>
                   </tr>
                 </template>
               </template>
@@ -141,37 +149,41 @@
                 </button>
                 <strong>POINT SERVICES</strong>
               </td>
-              <td><strong>{{ formatNumber(getPointServicesTotal('objectif')) }}</strong></td>
-              <td v-if="showColumn('mEnoursProjet')"><strong>{{ formatNumber((pointServicesTotal.mEnoursProjet || 0)) }}</strong></td>
-              <td v-if="showColumn('mEnours')"><strong>{{ formatNumber(pointServicesTotal.mEnours) }}</strong></td>
-              <td v-if="showColumn('m1Enours')"><strong>{{ formatNumber(pointServicesTotal.m1Enours) }}</strong></td>
-              <td v-if="showColumn('m1EnoursProjet')"><strong>{{ formatNumber((pointServicesTotal.m1EnoursProjet || 0)) }}</strong></td>
-              <td><strong>{{ formatPercent(getPointServicesTotal('tro')) }}</strong></td>
-              <td :class="getVariationClass(getPointServicesTotal('variation'))"><strong>{{ formatVariation(getPointServicesTotal('variation')) }}</strong></td>
-              <td><strong>{{ formatNumber(getPointServicesTotal('detteRattachee')) }}</strong></td>
+              <td><strong>{{ formatNumber(getObjectiveForLevel('pointServices')) }}</strong></td>
+              <td v-if="isCombinedView"><strong>{{ formatNumber(getCombinedEpargneM('pointServices')) }}</strong></td>
+              <td v-if="isCombinedView"><strong>{{ formatNumber(getCombinedEpargneM1('pointServices')) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('mEnoursProjet')"><strong>{{ formatNumber((pointServicesTotal.mEnoursProjet || 0)) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('mEnours')"><strong>{{ formatNumber(pointServicesTotal.mEnours) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('m1Enours')"><strong>{{ formatNumber(pointServicesTotal.m1Enours) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('m1EnoursProjet')"><strong>{{ formatNumber((pointServicesTotal.m1EnoursProjet || 0)) }}</strong></td>
+              <td><strong>{{ formatPercent(getTROForLevel('pointServices')) }}</strong></td>
+              <td :class="getVariationClass(getVariationForLevel('pointServices'))"><strong>{{ formatVariation(getVariationForLevel('pointServices')) }}</strong></td>
+              <td><strong>{{ formatNumber(isCombinedView ? getCombinedTotal('pointServices', 'detteRattachee') : getPointServicesTotal('detteRattachee')) }}</strong></td>
             </tr>
             
             <!-- Points de service individuels directement sous POINT SERVICES -->
             <template v-if="expandedSections['POINT SERVICES']">
               <template v-for="(servicePoint, servicePointKey) in filteredHierarchicalData['POINT SERVICES']" :key="`point-service-${servicePointKey}`">
-                <template v-if="servicePoint">
+                <template v-if="servicePoint && hasServicePointData(servicePoint)">
                   <template v-if="servicePoint.agencies && Array.isArray(servicePoint.agencies) && servicePoint.agencies.length > 0">
                     <tr 
-                      v-for="(agency, agencyIndex) in servicePoint.agencies" 
+                      v-for="(agency, agencyIndex) in servicePoint.agencies.filter(a => hasAgencyData(a))" 
                       :key="`agency-${servicePointKey}-${agencyIndex}-${agency.name || agency.AGENCE || agencyIndex}`"
                       class="level-2-row service-point-row"
                       :class="{ 'selected-agency': selectedAgency && selectedAgency.name === agency.name && selectedAgency.category === 'POINT SERVICES' }"
                       @click="selectAgency({ name: agency.name, category: 'POINT SERVICES', zone: servicePointKey })"
                     >
                       <td class="level-2 service-point-cell">{{ getAgencyName(agency) }}</td>
-                      <td>{{ formatNumber(getEncoursValue(agency, 'OBJECTIF') || agency.objectif || 0) }}</td>
-                      <td v-if="showColumn('mEnoursProjet')">{{ formatNumber(getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE_PROJET')) }}</td>
-                      <td v-if="showColumn('mEnours')">{{ formatNumber(getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE')) }}</td>
-                      <td v-if="showColumn('m1Enours')">{{ formatNumber(getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE')) }}</td>
-                      <td v-if="showColumn('m1EnoursProjet')">{{ formatNumber(getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE_PROJET')) }}</td>
-                      <td>{{ formatPercent(getEncoursValue(agency, 'TRO') || agency.tro || 0) }}</td>
-                      <td :class="getVariationClass(getEncoursValue(agency, 'VARIATION') || agency.variation || 0)">{{ formatVariation(getEncoursValue(agency, 'VARIATION') || agency.variation || 0) }}</td>
-                      <td>{{ formatNumber(getEncoursValue(agency, 'DETTE_RATTACHEE') || agency.detteRattachee || 0) }}</td>
+                      <td>{{ formatNumber(getObjectiveForAgency(agency)) }}</td>
+                      <td v-if="isCombinedView">{{ formatNumber(getCombinedEpargneMForAgency(agency)) }}</td>
+                      <td v-if="isCombinedView">{{ formatNumber(getCombinedEpargneM1ForAgency(agency)) }}</td>
+                      <td v-if="!isCombinedView && showColumn('mEnoursProjet')">{{ formatNumber(getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE_PROJET')) }}</td>
+                      <td v-if="!isCombinedView && showColumn('mEnours')">{{ formatNumber(getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE')) }}</td>
+                      <td v-if="!isCombinedView && showColumn('m1Enours')">{{ formatNumber(getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE')) }}</td>
+                      <td v-if="!isCombinedView && showColumn('m1EnoursProjet')">{{ formatNumber(getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE_PROJET')) }}</td>
+                      <td>{{ formatPercent(getTROForAgency(agency)) }}</td>
+                      <td :class="getVariationClass(getVariationForAgency(agency))">{{ formatVariation(getVariationForAgency(agency)) }}</td>
+                      <td>{{ formatNumber(isCombinedView ? getCombinedDetteRattacheeForAgency(agency) : (getEncoursValue(agency, 'DETTE_RATTACHEE') || agency.detteRattachee || 0)) }}</td>
                     </tr>
                   </template>
                 </template>
@@ -181,27 +193,31 @@
             <!-- GRAND COMPTE -->
             <tr v-if="grandCompte" class="level-3-row">
               <td class="level-3">GRAND COMPTE</td>
-              <td>{{ formatNumber(grandCompte.OBJECTIF || grandCompte.objectif || 0) }}</td>
-              <td v-if="showColumn('mEnoursProjet')">{{ formatNumber(grandCompte.M_ENCOURS_COMPTE_EPARGNE_PROJET || 0) }}</td>
-              <td v-if="showColumn('mEnours')">{{ formatNumber(grandCompte.M_ENCOURS_COMPTE_EPARGNE || 0) }}</td>
-              <td v-if="showColumn('m1Enours')">{{ formatNumber(grandCompte.M1_ENCOURS_COMPTE_EPARGNE || 0) }}</td>
-              <td v-if="showColumn('m1EnoursProjet')">{{ formatNumber(grandCompte.M1_ENCOURS_COMPTE_EPARGNE_PROJET || 0) }}</td>
-              <td>{{ formatPercent(grandCompte.TRO || grandCompte.tro || 0) }}</td>
-              <td :class="getVariationClass(grandCompte.VARIATION || grandCompte.variation || 0)">{{ formatVariation(grandCompte.VARIATION || grandCompte.variation || 0) }}</td>
-              <td>{{ formatNumber(grandCompte.DETTE_RATTACHEE || grandCompte.detteRattachee || 0) }}</td>
+              <td>{{ formatNumber(getObjectiveForGrandCompte()) }}</td>
+              <td v-if="isCombinedView">{{ formatNumber((grandCompte.M_ENCOURS_COMPTE_EPARGNE_PROJET || 0) + (grandCompte.M_ENCOURS_COMPTE_EPARGNE || 0)) }}</td>
+              <td v-if="isCombinedView">{{ formatNumber((grandCompte.M1_ENCOURS_COMPTE_EPARGNE_PROJET || 0) + (grandCompte.M1_ENCOURS_COMPTE_EPARGNE || 0)) }}</td>
+              <td v-if="!isCombinedView && showColumn('mEnoursProjet')">{{ formatNumber(grandCompte.M_ENCOURS_COMPTE_EPARGNE_PROJET || 0) }}</td>
+              <td v-if="!isCombinedView && showColumn('mEnours')">{{ formatNumber(grandCompte.M_ENCOURS_COMPTE_EPARGNE || 0) }}</td>
+              <td v-if="!isCombinedView && showColumn('m1Enours')">{{ formatNumber(grandCompte.M1_ENCOURS_COMPTE_EPARGNE || 0) }}</td>
+              <td v-if="!isCombinedView && showColumn('m1EnoursProjet')">{{ formatNumber(grandCompte.M1_ENCOURS_COMPTE_EPARGNE_PROJET || 0) }}</td>
+              <td>{{ formatPercent(getTROForGrandCompte()) }}</td>
+              <td :class="getVariationClass(getVariationForGrandCompte())">{{ formatVariation(getVariationForGrandCompte()) }}</td>
+              <td>{{ formatNumber(isCombinedView ? getCombinedDetteRattacheeForGrandCompte() : (grandCompte.DETTE_RATTACHEE || grandCompte.detteRattachee || 0)) }}</td>
             </tr>
 
             <!-- Ligne TOTAL -->
             <tr class="total-row">
               <td><strong>TOTAL</strong></td>
-              <td><strong>{{ formatNumber(getGrandTotal('objectif')) }}</strong></td>
-              <td v-if="showColumn('mEnoursProjet')"><strong>{{ formatNumber(getGrandTotal('mEnoursProjet')) }}</strong></td>
-              <td v-if="showColumn('mEnours')"><strong>{{ formatNumber(getGrandTotal('mEnours')) }}</strong></td>
-              <td v-if="showColumn('m1Enours')"><strong>{{ formatNumber(getGrandTotal('m1Enours')) }}</strong></td>
-              <td v-if="showColumn('m1EnoursProjet')"><strong>{{ formatNumber(getGrandTotal('m1EnoursProjet')) }}</strong></td>
-              <td><strong>{{ formatPercent(getGrandTotal('tro')) }}</strong></td>
-              <td :class="getVariationClass(getGrandTotal('variation'))"><strong>{{ formatVariation(getGrandTotal('variation')) }}</strong></td>
-              <td><strong>{{ formatNumber(getGrandTotal('detteRattachee')) }}</strong></td>
+              <td><strong>{{ formatNumber(getObjectiveForLevel('total')) }}</strong></td>
+              <td v-if="isCombinedView"><strong>{{ formatNumber(getCombinedEpargneM('total')) }}</strong></td>
+              <td v-if="isCombinedView"><strong>{{ formatNumber(getCombinedEpargneM1('total')) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('mEnoursProjet')"><strong>{{ formatNumber(getGrandTotal('mEnoursProjet')) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('mEnours')"><strong>{{ formatNumber(getGrandTotal('mEnours')) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('m1Enours')"><strong>{{ formatNumber(getGrandTotal('m1Enours')) }}</strong></td>
+              <td v-if="!isCombinedView && showColumn('m1EnoursProjet')"><strong>{{ formatNumber(getGrandTotal('m1EnoursProjet')) }}</strong></td>
+              <td><strong>{{ formatPercent(getTROForLevel('total')) }}</strong></td>
+              <td :class="getVariationClass(getVariationForLevel('total'))"><strong>{{ formatVariation(getVariationForLevel('total')) }}</strong></td>
+              <td><strong>{{ formatNumber(isCombinedView ? getCombinedTotal('total', 'detteRattachee') : getGrandTotal('detteRattachee')) }}</strong></td>
             </tr>
           </tbody>
         </table>
@@ -453,6 +469,10 @@ export default {
       }
       
       return filtered;
+    },
+    isCombinedView() {
+      // Vue combinée : additionner PEP + SIMPLE
+      return !this.filterType || this.filterType === 'epargne-pep-simple';
     },
     territoireTotal() {
       const hierarchicalData = this.filteredHierarchicalData || {};
@@ -842,7 +862,7 @@ export default {
     showColumn(column) {
       // Détermine quelles colonnes afficher selon le filtre
       if (!this.filterType || this.filterType === 'epargne-pep-simple') {
-        // 'epargne-pep-simple' : afficher toutes les colonnes
+        // 'epargne-pep-simple' : afficher toutes les colonnes (mais on utilise isCombinedView pour les combiner)
         return true;
       } else if (this.filterType === 'epargne-simple') {
         // Afficher seulement M et M1 ENCOURS COMPTE EPARGNE (sans PROJET)
@@ -852,6 +872,509 @@ export default {
         return column === 'mEnoursProjet' || column === 'm1EnoursProjet';
       }
       return true;
+    },
+    // Méthodes pour calculer les sommes PEP + SIMPLE
+    getCombinedEpargneMForAgency(agency) {
+      if (!agency) return 0;
+      const projetM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE_PROJET') || 0);
+      const simpleM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE') || 0);
+      return projetM + simpleM;
+    },
+    getCombinedEpargneM1ForAgency(agency) {
+      if (!agency) return 0;
+      const projetM1 = parseFloat(this.getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE_PROJET') || 0);
+      const simpleM1 = parseFloat(this.getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE') || 0);
+      return projetM1 + simpleM1;
+    },
+    getCombinedEpargneMForTerritory(territory) {
+      if (!territory || !territory.agencies) return 0;
+      let total = 0;
+      territory.agencies.forEach(agency => {
+        total += this.getCombinedEpargneMForAgency(agency);
+      });
+      return total;
+    },
+    getCombinedEpargneM1ForTerritory(territory) {
+      if (!territory || !territory.agencies) return 0;
+      let total = 0;
+      territory.agencies.forEach(agency => {
+        total += this.getCombinedEpargneM1ForAgency(agency);
+      });
+      return total;
+    },
+    getCombinedEpargneM(level) {
+      // level peut être 'territoire', 'pointServices', ou 'total'
+      if (level === 'territoire') {
+        return (this.territoireTotal.mEnoursProjet || 0) + (this.territoireTotal.mEnours || 0);
+      } else if (level === 'pointServices') {
+        return (this.pointServicesTotal.mEnoursProjet || 0) + (this.pointServicesTotal.mEnours || 0);
+      } else if (level === 'total') {
+        const territoireM = (this.territoireTotal.mEnoursProjet || 0) + (this.territoireTotal.mEnours || 0);
+        const pointServicesM = (this.pointServicesTotal.mEnoursProjet || 0) + (this.pointServicesTotal.mEnours || 0);
+        const grandCompteM = this.grandCompte ? 
+          ((this.grandCompte.M_ENCOURS_COMPTE_EPARGNE_PROJET || 0) + (this.grandCompte.M_ENCOURS_COMPTE_EPARGNE || 0)) : 0;
+        return territoireM + pointServicesM + grandCompteM;
+      }
+      return 0;
+    },
+    getCombinedEpargneM1(level) {
+      // level peut être 'territoire', 'pointServices', ou 'total'
+      if (level === 'territoire') {
+        return (this.territoireTotal.m1EnoursProjet || 0) + (this.territoireTotal.m1Enours || 0);
+      } else if (level === 'pointServices') {
+        return (this.pointServicesTotal.m1EnoursProjet || 0) + (this.pointServicesTotal.m1Enours || 0);
+      } else if (level === 'total') {
+        const territoireM1 = (this.territoireTotal.m1EnoursProjet || 0) + (this.territoireTotal.m1Enours || 0);
+        const pointServicesM1 = (this.pointServicesTotal.m1EnoursProjet || 0) + (this.pointServicesTotal.m1Enours || 0);
+        const grandCompteM1 = this.grandCompte ? 
+          ((this.grandCompte.M1_ENCOURS_COMPTE_EPARGNE_PROJET || 0) + (this.grandCompte.M1_ENCOURS_COMPTE_EPARGNE || 0)) : 0;
+        return territoireM1 + pointServicesM1 + grandCompteM1;
+      }
+      return 0;
+    },
+    // Méthodes pour obtenir l'objectif selon le filtre (SIMPLE, PROJET ou combiné)
+    getObjectiveForAgency(agency) {
+      if (!agency) return 0;
+      if (this.isCombinedView) {
+        return this.getCombinedObjectiveForAgency(agency);
+      } else if (this.filterType === 'epargne-simple') {
+        return parseFloat(agency.objectif_epargne_simple || agency.OBJECTIF_EPARGNE_SIMPLE || 0);
+      } else if (this.filterType === 'epargne-projet') {
+        return parseFloat(agency.objectif_epargne_projet || agency.OBJECTIF_EPARGNE_PROJET || 0);
+      }
+      return parseFloat(agency.objectif || agency.OBJECTIF || 0);
+    },
+    getObjectiveForTerritory(territory) {
+      if (!territory || !territory.agencies) return 0;
+      let total = 0;
+      territory.agencies.forEach(agency => {
+        total += this.getObjectiveForAgency(agency);
+      });
+      return total;
+    },
+    getObjectiveForLevel(level) {
+      if (level === 'territoire') {
+        let total = 0;
+        Object.values(this.filteredHierarchicalData.TERRITOIRE || {}).forEach(territory => {
+          if (territory && territory.agencies) {
+            total += this.getObjectiveForTerritory(territory);
+          }
+        });
+        return total;
+      } else if (level === 'pointServices') {
+        let total = 0;
+        Object.values(this.filteredHierarchicalData['POINT SERVICES'] || {}).forEach(servicePoint => {
+          if (servicePoint && servicePoint.agencies) {
+            servicePoint.agencies.forEach(agency => {
+              total += this.getObjectiveForAgency(agency);
+            });
+          }
+        });
+        return total;
+      } else if (level === 'total') {
+        const territoire = this.getObjectiveForLevel('territoire');
+        const pointServices = this.getObjectiveForLevel('pointServices');
+        const grandCompte = this.getObjectiveForGrandCompte();
+        return territoire + pointServices + grandCompte;
+      }
+      return 0;
+    },
+    getObjectiveForGrandCompte() {
+      if (!this.grandCompte) return 0;
+      if (this.isCombinedView) {
+        return this.getCombinedObjectiveForGrandCompte();
+      } else if (this.filterType === 'epargne-simple') {
+        return parseFloat(this.grandCompte.OBJECTIF_EPARGNE_SIMPLE || this.grandCompte.objectif_epargne_simple || 0);
+      } else if (this.filterType === 'epargne-projet') {
+        return parseFloat(this.grandCompte.OBJECTIF_EPARGNE_PROJET || this.grandCompte.objectif_epargne_projet || 0);
+      }
+      return parseFloat(this.grandCompte.OBJECTIF || this.grandCompte.objectif || 0);
+    },
+    // Méthodes pour calculer le TRO selon le filtre
+    getTROForAgency(agency) {
+      if (!agency) return 0;
+      if (this.isCombinedView) {
+        return this.getCombinedTROForAgency(agency);
+      }
+      
+      const objectif = this.getObjectiveForAgency(agency);
+      let epargneM = 0;
+      
+      if (this.filterType === 'epargne-simple') {
+        epargneM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE') || 0);
+      } else if (this.filterType === 'epargne-projet') {
+        epargneM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE_PROJET') || 0);
+      }
+      
+      if (objectif > 0) {
+        // L'objectif est en millions de FCFA, convertir en FCFA
+        const objectifEnFCFA = objectif * 1000000;
+        return (epargneM / objectifEnFCFA) * 100;
+      }
+      return 0;
+    },
+    getTROForTerritory(territory) {
+      if (!territory) return 0;
+      if (this.isCombinedView) {
+        return this.getCombinedTROForTerritory(territory);
+      }
+      
+      const objectif = this.getObjectiveForTerritory(territory);
+      let epargneM = 0;
+      
+      if (this.filterType === 'epargne-simple') {
+        epargneM = this.getTerritoryTotal(territory, 'mEnours');
+      } else if (this.filterType === 'epargne-projet') {
+        epargneM = this.getTerritoryTotal(territory, 'mEnoursProjet');
+      }
+      
+      if (objectif > 0) {
+        // L'objectif est en millions de FCFA, convertir en FCFA
+        const objectifEnFCFA = objectif * 1000000;
+        return (epargneM / objectifEnFCFA) * 100;
+      }
+      return 0;
+    },
+    getTROForLevel(level) {
+      if (this.isCombinedView) {
+        return this.getCombinedTRO(level);
+      }
+      
+      const objectif = this.getObjectiveForLevel(level);
+      let epargneM = 0;
+      
+      if (level === 'territoire') {
+        if (this.filterType === 'epargne-simple') {
+          epargneM = this.territoireTotal.mEnours || 0;
+        } else if (this.filterType === 'epargne-projet') {
+          epargneM = this.territoireTotal.mEnoursProjet || 0;
+        }
+      } else if (level === 'pointServices') {
+        if (this.filterType === 'epargne-simple') {
+          epargneM = this.pointServicesTotal.mEnours || 0;
+        } else if (this.filterType === 'epargne-projet') {
+          epargneM = this.pointServicesTotal.mEnoursProjet || 0;
+        }
+      } else if (level === 'total') {
+        if (this.filterType === 'epargne-simple') {
+          epargneM = this.getGrandTotal('mEnours');
+        } else if (this.filterType === 'epargne-projet') {
+          epargneM = this.getGrandTotal('mEnoursProjet');
+        }
+      }
+      
+      if (objectif > 0) {
+        // L'objectif est en millions de FCFA, convertir en FCFA
+        const objectifEnFCFA = objectif * 1000000;
+        return (epargneM / objectifEnFCFA) * 100;
+      }
+      return 0;
+    },
+    getTROForGrandCompte() {
+      if (!this.grandCompte) return 0;
+      if (this.isCombinedView) {
+        return this.getCombinedTROForGrandCompte();
+      }
+      
+      const objectif = this.getObjectiveForGrandCompte();
+      let epargneM = 0;
+      
+      if (this.filterType === 'epargne-simple') {
+        epargneM = parseFloat(this.grandCompte.M_ENCOURS_COMPTE_EPARGNE || 0);
+      } else if (this.filterType === 'epargne-projet') {
+        epargneM = parseFloat(this.grandCompte.M_ENCOURS_COMPTE_EPARGNE_PROJET || 0);
+      }
+      
+      if (objectif > 0) {
+        // L'objectif est en millions de FCFA, convertir en FCFA
+        const objectifEnFCFA = objectif * 1000000;
+        return (epargneM / objectifEnFCFA) * 100;
+      }
+      return 0;
+    },
+    // Méthodes pour calculer la variation selon le filtre
+    getVariationForAgency(agency) {
+      if (!agency) return 0;
+      if (this.isCombinedView) {
+        return this.getCombinedVariationForAgency(agency);
+      }
+      
+      let epargneM = 0;
+      let epargneM1 = 0;
+      
+      if (this.filterType === 'epargne-simple') {
+        epargneM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE') || 0);
+        epargneM1 = parseFloat(this.getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE') || 0);
+      } else if (this.filterType === 'epargne-projet') {
+        epargneM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE_PROJET') || 0);
+        epargneM1 = parseFloat(this.getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE_PROJET') || 0);
+      }
+      
+      if (epargneM1 > 0) {
+        return ((epargneM - epargneM1) / epargneM1) * 100;
+      }
+      return 0;
+    },
+    getVariationForTerritory(territory) {
+      if (!territory) return 0;
+      if (this.isCombinedView) {
+        return this.getCombinedVariationForTerritory(territory);
+      }
+      
+      let epargneM = 0;
+      let epargneM1 = 0;
+      
+      if (this.filterType === 'epargne-simple') {
+        epargneM = this.getTerritoryTotal(territory, 'mEnours');
+        epargneM1 = this.getTerritoryTotal(territory, 'm1Enours');
+      } else if (this.filterType === 'epargne-projet') {
+        epargneM = this.getTerritoryTotal(territory, 'mEnoursProjet');
+        epargneM1 = this.getTerritoryTotal(territory, 'm1EnoursProjet');
+      }
+      
+      if (epargneM1 > 0) {
+        return ((epargneM - epargneM1) / epargneM1) * 100;
+      }
+      return 0;
+    },
+    getVariationForLevel(level) {
+      if (this.isCombinedView) {
+        return this.getCombinedVariation(level);
+      }
+      
+      let epargneM = 0;
+      let epargneM1 = 0;
+      
+      if (level === 'territoire') {
+        if (this.filterType === 'epargne-simple') {
+          epargneM = this.territoireTotal.mEnours || 0;
+          epargneM1 = this.territoireTotal.m1Enours || 0;
+        } else if (this.filterType === 'epargne-projet') {
+          epargneM = this.territoireTotal.mEnoursProjet || 0;
+          epargneM1 = this.territoireTotal.m1EnoursProjet || 0;
+        }
+      } else if (level === 'pointServices') {
+        if (this.filterType === 'epargne-simple') {
+          epargneM = this.pointServicesTotal.mEnours || 0;
+          epargneM1 = this.pointServicesTotal.m1Enours || 0;
+        } else if (this.filterType === 'epargne-projet') {
+          epargneM = this.pointServicesTotal.mEnoursProjet || 0;
+          epargneM1 = this.pointServicesTotal.m1EnoursProjet || 0;
+        }
+      } else if (level === 'total') {
+        if (this.filterType === 'epargne-simple') {
+          epargneM = this.getGrandTotal('mEnours');
+          epargneM1 = this.getGrandTotal('m1Enours');
+        } else if (this.filterType === 'epargne-projet') {
+          epargneM = this.getGrandTotal('mEnoursProjet');
+          epargneM1 = this.getGrandTotal('m1EnoursProjet');
+        }
+      }
+      
+      if (epargneM1 > 0) {
+        return ((epargneM - epargneM1) / epargneM1) * 100;
+      }
+      return 0;
+    },
+    getVariationForGrandCompte() {
+      if (!this.grandCompte) return 0;
+      if (this.isCombinedView) {
+        return this.getCombinedVariationForGrandCompte();
+      }
+      
+      let epargneM = 0;
+      let epargneM1 = 0;
+      
+      if (this.filterType === 'epargne-simple') {
+        epargneM = parseFloat(this.grandCompte.M_ENCOURS_COMPTE_EPARGNE || 0);
+        epargneM1 = parseFloat(this.grandCompte.M1_ENCOURS_COMPTE_EPARGNE || 0);
+      } else if (this.filterType === 'epargne-projet') {
+        epargneM = parseFloat(this.grandCompte.M_ENCOURS_COMPTE_EPARGNE_PROJET || 0);
+        epargneM1 = parseFloat(this.grandCompte.M1_ENCOURS_COMPTE_EPARGNE_PROJET || 0);
+      }
+      
+      if (epargneM1 > 0) {
+        return ((epargneM - epargneM1) / epargneM1) * 100;
+      }
+      return 0;
+    },
+    // Méthodes pour calculer les valeurs combinées (PEP + SIMPLE) pour objectif, TRO, variation, dette
+    getCombinedObjectiveForAgency(agency) {
+      if (!agency) return 0;
+      // L'objectif combiné est déjà calculé dans mergeObjectivesWithOracleData
+      // Utiliser d'abord l'objectif combiné, sinon additionner les objectifs individuels
+      const objectifCombined = parseFloat(agency.objectif || agency.OBJECTIF || 0);
+      if (objectifCombined > 0) {
+        return objectifCombined;
+      }
+      // Sinon, additionner les objectifs individuels
+      const objectifSimple = parseFloat(agency.objectif_epargne_simple || agency.OBJECTIF_EPARGNE_SIMPLE || 0);
+      const objectifProjet = parseFloat(agency.objectif_epargne_projet || agency.OBJECTIF_EPARGNE_PROJET || 0);
+      return objectifSimple + objectifProjet;
+    },
+    getCombinedTROForAgency(agency) {
+      if (!agency) return 0;
+      const objectif = this.getCombinedObjectiveForAgency(agency);
+      const epargneM = this.getCombinedEpargneMForAgency(agency);
+      if (objectif > 0) {
+        // L'objectif est en millions de FCFA, convertir en FCFA
+        const objectifEnFCFA = objectif * 1000000;
+        return (epargneM / objectifEnFCFA) * 100;
+      }
+      return 0;
+    },
+    getCombinedVariationForAgency(agency) {
+      if (!agency) return 0;
+      const epargneM = this.getCombinedEpargneMForAgency(agency);
+      const epargneM1 = this.getCombinedEpargneM1ForAgency(agency);
+      if (epargneM1 > 0) {
+        return ((epargneM - epargneM1) / epargneM1) * 100;
+      }
+      return 0;
+    },
+    getCombinedDetteRattacheeForAgency(agency) {
+      if (!agency) return 0;
+      const detteSimple = parseFloat(this.getEncoursValue(agency, 'DETTE_RATTACHEE') || agency.detteRattachee || 0);
+      const detteProjet = parseFloat(agency.detteRattacheeProjet || agency.DETTE_RATTACHEE_PROJET || 0);
+      return detteSimple + detteProjet;
+    },
+    getCombinedTotalForTerritory(territory, field) {
+      if (!territory || !territory.agencies) return 0;
+      let total = 0;
+      territory.agencies.forEach(agency => {
+        if (field === 'objectif') {
+          total += this.getCombinedObjectiveForAgency(agency);
+        } else if (field === 'detteRattachee') {
+          total += this.getCombinedDetteRattacheeForAgency(agency);
+        }
+      });
+      return total;
+    },
+    getCombinedTROForTerritory(territory) {
+      if (!territory) return 0;
+      const objectif = this.getCombinedTotalForTerritory(territory, 'objectif');
+      const epargneM = this.getCombinedEpargneMForTerritory(territory);
+      if (objectif > 0) {
+        // L'objectif est en millions de FCFA, convertir en FCFA
+        const objectifEnFCFA = objectif * 1000000;
+        return (epargneM / objectifEnFCFA) * 100;
+      }
+      return 0;
+    },
+    getCombinedVariationForTerritory(territory) {
+      if (!territory) return 0;
+      const epargneM = this.getCombinedEpargneMForTerritory(territory);
+      const epargneM1 = this.getCombinedEpargneM1ForTerritory(territory);
+      if (epargneM1 > 0) {
+        return ((epargneM - epargneM1) / epargneM1) * 100;
+      }
+      return 0;
+    },
+    getCombinedTotal(level, field) {
+      // level peut être 'territoire', 'pointServices', ou 'total'
+      // Les méthodes getTerritoireTotal et getPointServicesTotal additionnent déjà les objectifs combinés
+      // car chaque agence a agency.objectif qui contient la somme EPARGNE_SIMPLE + EPARGNE_PROJET
+      if (level === 'territoire') {
+        return this.getTerritoireTotal(field);
+      } else if (level === 'pointServices') {
+        return this.getPointServicesTotal(field);
+      } else if (level === 'total') {
+        const territoire = this.getTerritoireTotal(field);
+        const pointServices = this.getPointServicesTotal(field);
+        const grandCompte = field === 'objectif' ? this.getCombinedObjectiveForGrandCompte() : 
+                           field === 'detteRattachee' ? this.getCombinedDetteRattacheeForGrandCompte() : 0;
+        return territoire + pointServices + grandCompte;
+      }
+      return 0;
+    },
+    getCombinedTRO(level) {
+      if (level === 'territoire') {
+        const objectif = this.getCombinedTotal('territoire', 'objectif');
+        const epargneM = this.getCombinedEpargneM('territoire');
+        if (objectif > 0) {
+          // L'objectif est en millions de FCFA, convertir en FCFA
+          const objectifEnFCFA = objectif * 1000000;
+          return (epargneM / objectifEnFCFA) * 100;
+        }
+        return 0;
+      } else if (level === 'pointServices') {
+        const objectif = this.getCombinedTotal('pointServices', 'objectif');
+        const epargneM = this.getCombinedEpargneM('pointServices');
+        if (objectif > 0) {
+          // L'objectif est en millions de FCFA, convertir en FCFA
+          const objectifEnFCFA = objectif * 1000000;
+          return (epargneM / objectifEnFCFA) * 100;
+        }
+        return 0;
+      } else if (level === 'total') {
+        const objectif = this.getCombinedTotal('total', 'objectif');
+        const epargneM = this.getCombinedEpargneM('total');
+        if (objectif > 0) {
+          // L'objectif est en millions de FCFA, convertir en FCFA
+          const objectifEnFCFA = objectif * 1000000;
+          return (epargneM / objectifEnFCFA) * 100;
+        }
+        return 0;
+      }
+      return 0;
+    },
+    getCombinedVariation(level) {
+      if (level === 'territoire') {
+        const epargneM = this.getCombinedEpargneM('territoire');
+        const epargneM1 = this.getCombinedEpargneM1('territoire');
+        if (epargneM1 > 0) {
+          return ((epargneM - epargneM1) / epargneM1) * 100;
+        }
+        return 0;
+      } else if (level === 'pointServices') {
+        const epargneM = this.getCombinedEpargneM('pointServices');
+        const epargneM1 = this.getCombinedEpargneM1('pointServices');
+        if (epargneM1 > 0) {
+          return ((epargneM - epargneM1) / epargneM1) * 100;
+        }
+        return 0;
+      } else if (level === 'total') {
+        const epargneM = this.getCombinedEpargneM('total');
+        const epargneM1 = this.getCombinedEpargneM1('total');
+        if (epargneM1 > 0) {
+          return ((epargneM - epargneM1) / epargneM1) * 100;
+        }
+        return 0;
+      }
+      return 0;
+    },
+    getCombinedObjectiveForGrandCompte() {
+      if (!this.grandCompte) return 0;
+      const objectifSimple = parseFloat(this.grandCompte.OBJECTIF_EPARGNE_SIMPLE || this.grandCompte.objectif_epargne_simple || this.grandCompte.objectif || 0);
+      const objectifProjet = parseFloat(this.grandCompte.OBJECTIF_EPARGNE_PROJET || this.grandCompte.objectif_epargne_projet || 0);
+      const objectifCombined = parseFloat(this.grandCompte.OBJECTIF || this.grandCompte.objectif || 0);
+      return objectifCombined > 0 ? objectifCombined : (objectifSimple + objectifProjet);
+    },
+    getCombinedTROForGrandCompte() {
+      if (!this.grandCompte) return 0;
+      const objectif = this.getCombinedObjectiveForGrandCompte();
+      const epargneM = (this.grandCompte.M_ENCOURS_COMPTE_EPARGNE_PROJET || 0) + (this.grandCompte.M_ENCOURS_COMPTE_EPARGNE || 0);
+      if (objectif > 0) {
+        // L'objectif est en millions de FCFA, convertir en FCFA
+        const objectifEnFCFA = objectif * 1000000;
+        return (epargneM / objectifEnFCFA) * 100;
+      }
+      return 0;
+    },
+    getCombinedVariationForGrandCompte() {
+      if (!this.grandCompte) return 0;
+      const epargneM = (this.grandCompte.M_ENCOURS_COMPTE_EPARGNE_PROJET || 0) + (this.grandCompte.M_ENCOURS_COMPTE_EPARGNE || 0);
+      const epargneM1 = (this.grandCompte.M1_ENCOURS_COMPTE_EPARGNE_PROJET || 0) + (this.grandCompte.M1_ENCOURS_COMPTE_EPARGNE || 0);
+      if (epargneM1 > 0) {
+        return ((epargneM - epargneM1) / epargneM1) * 100;
+      }
+      return 0;
+    },
+    getCombinedDetteRattacheeForGrandCompte() {
+      if (!this.grandCompte) return 0;
+      const detteSimple = parseFloat(this.grandCompte.DETTE_RATTACHEE || this.grandCompte.detteRattachee || 0);
+      const detteProjet = parseFloat(this.grandCompte.DETTE_RATTACHEE_PROJET || this.grandCompte.detteRattacheeProjet || 0);
+      return detteSimple + detteProjet;
     },
     getWeekNumber(date) {
       const d = date instanceof Date ? date : new Date(date);
@@ -1119,6 +1642,48 @@ export default {
       if (value === null || value === undefined) return '';
       return value >= 0 ? 'positive' : 'negative';
     },
+    hasAgencyData(agency) {
+      if (!agency) return false;
+      
+      // Vérifier si l'agence a au moins une donnée non nulle
+      if (this.isCombinedView) {
+        const epargneM = this.getCombinedEpargneMForAgency(agency);
+        const epargneM1 = this.getCombinedEpargneM1ForAgency(agency);
+        const detteRattachee = this.getCombinedDetteRattacheeForAgency(agency);
+        return epargneM > 0 || epargneM1 > 0 || detteRattachee > 0;
+      } else {
+        // Pour les vues non combinées, vérifier selon le type de filtre
+        if (this.filterType === 'epargne-simple') {
+          const epargneM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE') || 0);
+          const epargneM1 = parseFloat(this.getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE') || 0);
+          const detteRattachee = parseFloat(this.getEncoursValue(agency, 'DETTE_RATTACHEE') || agency.detteRattachee || 0);
+          return epargneM > 0 || epargneM1 > 0 || detteRattachee > 0;
+        } else if (this.filterType === 'epargne-projet') {
+          const epargneM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE_PROJET') || 0);
+          const epargneM1 = parseFloat(this.getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE_PROJET') || 0);
+          const detteRattachee = parseFloat(this.getEncoursValue(agency, 'DETTE_RATTACHEE') || agency.detteRattachee || 0);
+          return epargneM > 0 || epargneM1 > 0 || detteRattachee > 0;
+        } else {
+          // Pour epargne-pep-simple, vérifier toutes les valeurs
+          const epargneM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE') || 0);
+          const epargneM1 = parseFloat(this.getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE') || 0);
+          const epargneProjetM = parseFloat(this.getEncoursValue(agency, 'M_ENCOURS_COMPTE_EPARGNE_PROJET') || 0);
+          const epargneProjetM1 = parseFloat(this.getEncoursValue(agency, 'M1_ENCOURS_COMPTE_EPARGNE_PROJET') || 0);
+          const detteRattachee = parseFloat(this.getEncoursValue(agency, 'DETTE_RATTACHEE') || agency.detteRattachee || 0);
+          return epargneM > 0 || epargneM1 > 0 || epargneProjetM > 0 || epargneProjetM1 > 0 || detteRattachee > 0;
+        }
+      }
+    },
+    hasTerritoryData(territory) {
+      if (!territory || !territory.agencies || !Array.isArray(territory.agencies)) return false;
+      // Un territoire a des données s'il a au moins une agence avec des données
+      return territory.agencies.some(agency => this.hasAgencyData(agency));
+    },
+    hasServicePointData(servicePoint) {
+      if (!servicePoint || !servicePoint.agencies || !Array.isArray(servicePoint.agencies)) return false;
+      // Un point de service a des données s'il a au moins une agence avec des données
+      return servicePoint.agencies.some(agency => this.hasAgencyData(agency));
+    },
     async fetchDataFromOracle() {
       this.loading = true;
       try {
@@ -1197,6 +1762,9 @@ export default {
             'POINT SERVICES': {}
           };
         }
+        
+        // Charger les objectifs depuis Laravel et les fusionner avec les données Oracle
+        await this.loadObjectives();
       } catch (error) {
         this.hierarchicalDataFromBackend = {
           TERRITOIRE: {},
@@ -1218,7 +1786,207 @@ export default {
           this.errorMessage = 'Erreur de connexion. Veuillez vérifier que le service Oracle est accessible.';
         }
       } finally {
+        // Charger les objectifs même en cas d'erreur partielle
+        try {
+          await this.loadObjectives();
+        } catch (error) {
+          console.warn('⚠️ Erreur lors du chargement des objectifs:', error);
+        }
         this.loading = false;
+      }
+    },
+    async loadObjectives() {
+      // Charger les objectifs EPARGNE_SIMPLE et EPARGNE_PROJET depuis l'API Laravel
+      try {
+        const token = localStorage.getItem('token');
+        const objectiveTypes = ['EPARGNE_SIMPLE', 'EPARGNE_PROJET'];
+        const allObjectives = {};
+        
+        for (const type of objectiveTypes) {
+          const params = {
+            type: type,
+            period: this.selectedPeriod === 'week' ? 'month' : this.selectedPeriod,
+            year: this.selectedYear
+          };
+          
+          // Ajouter les paramètres selon la période
+          if (this.selectedPeriod === 'month') {
+            params.month = this.selectedMonth;
+          } else if (this.selectedPeriod === 'quarter') {
+            params.quarter = Math.ceil(this.selectedMonth / 3);
+          } else if (this.selectedPeriod === 'week') {
+            if (this.selectedDate) {
+              const date = new Date(this.selectedDate);
+              params.month = date.getMonth() + 1;
+            }
+          }
+          
+          console.log(`📊 Chargement des objectifs ${type} avec params:`, params);
+          
+          const response = await window.axios.get('/api/objectives', {
+            params: params,
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.data && response.data.success && response.data.data) {
+            const objectives = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+            console.log(`✅ Objectifs ${type} chargés:`, objectives.length);
+            
+            // Créer un map des objectifs par agency_code et agency_name
+            objectives.forEach(obj => {
+              const agencyCode = (obj.agency_code || '').toString().trim();
+              const agencyName = (obj.agency_name || '').toString().trim();
+              const value = obj.value || 0;
+              
+              if (agencyCode) {
+                if (!allObjectives[agencyCode]) {
+                  allObjectives[agencyCode] = {};
+                }
+                allObjectives[agencyCode][type] = value;
+              }
+              if (agencyName) {
+                const normalizedName = agencyName.toUpperCase().trim();
+                if (!allObjectives[normalizedName]) {
+                  allObjectives[normalizedName] = {};
+                }
+                allObjectives[normalizedName][type] = value;
+              }
+            });
+          }
+        }
+        
+        console.log('📊 Tous les objectifs épargne chargés:', allObjectives);
+        
+        // Fusionner les objectifs avec les données Oracle
+        this.mergeObjectivesWithOracleData(allObjectives);
+      } catch (error) {
+        console.warn('⚠️ Erreur lors du chargement des objectifs:', error);
+      }
+    },
+    mergeObjectivesWithOracleData(allObjectives) {
+      // Fusionner les objectifs avec les agences dans les territoires
+      if (this.hierarchicalDataFromBackend && this.hierarchicalDataFromBackend.TERRITOIRE) {
+        Object.keys(this.hierarchicalDataFromBackend.TERRITOIRE).forEach(territoryKey => {
+          const territory = this.hierarchicalDataFromBackend.TERRITOIRE[territoryKey];
+          if (territory.agencies && Array.isArray(territory.agencies)) {
+            territory.agencies.forEach(agency => {
+              const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+              const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+              
+              // Chercher les objectifs par code d'agence d'abord
+              let objectives = null;
+              if (agencyCode && allObjectives[agencyCode]) {
+                objectives = allObjectives[agencyCode];
+                console.log(`✅ Objectifs trouvés par code pour ${agencyName} (${agencyCode}):`, objectives);
+              } else if (agencyName) {
+                const normalizedName = agencyName.toUpperCase().trim();
+                if (allObjectives[normalizedName]) {
+                  objectives = allObjectives[normalizedName];
+                  console.log(`✅ Objectifs trouvés par nom pour ${agencyName}:`, objectives);
+                }
+              }
+              
+              if (objectives) {
+                // Stocker les objectifs individuels
+                agency.objectif_epargne_simple = objectives.EPARGNE_SIMPLE || 0;
+                agency.objectif_epargne_projet = objectives.EPARGNE_PROJET || 0;
+                agency.OBJECTIF_EPARGNE_SIMPLE = objectives.EPARGNE_SIMPLE || 0;
+                agency.OBJECTIF_EPARGNE_PROJET = objectives.EPARGNE_PROJET || 0;
+                // Somme des objectifs EPARGNE_SIMPLE et EPARGNE_PROJET
+                const totalObjective = (objectives.EPARGNE_SIMPLE || 0) + (objectives.EPARGNE_PROJET || 0);
+                agency.objectif = totalObjective;
+                agency.OBJECTIF = totalObjective;
+              }
+            });
+          }
+        });
+      }
+      
+      // Fusionner avec les points de service
+      if (this.hierarchicalDataFromBackend && this.hierarchicalDataFromBackend['POINT SERVICES']) {
+        Object.keys(this.hierarchicalDataFromBackend['POINT SERVICES']).forEach(servicePointKey => {
+          const servicePoint = this.hierarchicalDataFromBackend['POINT SERVICES'][servicePointKey];
+          if (servicePoint && servicePoint.agencies && Array.isArray(servicePoint.agencies)) {
+            servicePoint.agencies.forEach(agency => {
+              const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+              const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+              
+              let objectives = null;
+              if (agencyCode && allObjectives[agencyCode]) {
+                objectives = allObjectives[agencyCode];
+              } else if (agencyName) {
+                const normalizedName = agencyName.toUpperCase().trim();
+                if (allObjectives[normalizedName]) {
+                  objectives = allObjectives[normalizedName];
+                }
+              }
+              
+              if (objectives) {
+                // Stocker les objectifs individuels
+                agency.objectif_epargne_simple = objectives.EPARGNE_SIMPLE || 0;
+                agency.objectif_epargne_projet = objectives.EPARGNE_PROJET || 0;
+                agency.OBJECTIF_EPARGNE_SIMPLE = objectives.EPARGNE_SIMPLE || 0;
+                agency.OBJECTIF_EPARGNE_PROJET = objectives.EPARGNE_PROJET || 0;
+                // Somme des objectifs EPARGNE_SIMPLE et EPARGNE_PROJET
+                const totalObjective = (objectives.EPARGNE_SIMPLE || 0) + (objectives.EPARGNE_PROJET || 0);
+                agency.objectif = totalObjective;
+                agency.OBJECTIF = totalObjective;
+              }
+            });
+          }
+        });
+      }
+      
+      // Fusionner avec le grand compte (dans la structure hiérarchique)
+      if (this.hierarchicalDataFromBackend && this.hierarchicalDataFromBackend.TERRITOIRE && this.hierarchicalDataFromBackend.TERRITOIRE.grand_compte) {
+        const grandCompte = this.hierarchicalDataFromBackend.TERRITOIRE.grand_compte;
+        if (grandCompte.agencies && Array.isArray(grandCompte.agencies) && grandCompte.agencies.length > 0) {
+          grandCompte.agencies.forEach(agency => {
+            const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+            const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+            
+            let objectives = null;
+            if (agencyCode && allObjectives[agencyCode]) {
+              objectives = allObjectives[agencyCode];
+            } else if (agencyName) {
+              const normalizedName = agencyName.toUpperCase().trim();
+              if (allObjectives[normalizedName]) {
+                objectives = allObjectives[normalizedName];
+              }
+            }
+            
+            if (objectives) {
+              // Stocker les objectifs individuels
+              agency.objectif_epargne_simple = objectives.EPARGNE_SIMPLE || 0;
+              agency.objectif_epargne_projet = objectives.EPARGNE_PROJET || 0;
+              agency.OBJECTIF_EPARGNE_SIMPLE = objectives.EPARGNE_SIMPLE || 0;
+              agency.OBJECTIF_EPARGNE_PROJET = objectives.EPARGNE_PROJET || 0;
+              // Somme des objectifs EPARGNE_SIMPLE et EPARGNE_PROJET
+              const totalObjective = (objectives.EPARGNE_SIMPLE || 0) + (objectives.EPARGNE_PROJET || 0);
+              agency.objectif = totalObjective;
+              agency.OBJECTIF = totalObjective;
+            }
+          });
+        }
+      }
+      
+      // Stocker aussi les objectifs pour grandCompte au niveau racine (si disponible)
+      if (this.grandCompte) {
+        // Chercher les objectifs pour GRAND COMPTE
+        const grandCompteName = 'GRAND COMPTE';
+        const normalizedName = grandCompteName.toUpperCase().trim();
+        if (allObjectives[normalizedName]) {
+          const objectives = allObjectives[normalizedName];
+          this.grandCompte.objectif_epargne_simple = objectives.EPARGNE_SIMPLE || 0;
+          this.grandCompte.objectif_epargne_projet = objectives.EPARGNE_PROJET || 0;
+          this.grandCompte.OBJECTIF_EPARGNE_SIMPLE = objectives.EPARGNE_SIMPLE || 0;
+          this.grandCompte.OBJECTIF_EPARGNE_PROJET = objectives.EPARGNE_PROJET || 0;
+          const totalObjective = (objectives.EPARGNE_SIMPLE || 0) + (objectives.EPARGNE_PROJET || 0);
+          this.grandCompte.objectif = totalObjective;
+          this.grandCompte.OBJECTIF = totalObjective;
+        }
       }
     },
     loadDataForPeriod() {

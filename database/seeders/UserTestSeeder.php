@@ -20,37 +20,37 @@ class UserTestSeeder extends Seeder
         $users = [
             [
                 'name' => 'Directeur Général',
-                'email' => 'md@cofibank.com',
+                'email' => 'md@cofidash.com',
                 'password' => 'password123',
                 'profile_code' => 'MD'
             ],
             [
                 'name' => 'Directeur Général Adjoint',
-                'email' => 'dga@cofibank.com',
+                'email' => 'dga@cofidash.com',
                 'password' => 'password123',
                 'profile_code' => 'DGA'
             ],
             [
                 'name' => 'Responsable Zone Dakar',
-                'email' => 'responsable.zone@cofibank.com',
+                'email' => 'responsable.zone@cofidash.com',
                 'password' => 'password123',
                 'profile_code' => 'RESPONSABLE_ZONE'
             ],
             [
                 'name' => 'Chef d\'Agence Nguélaw',
-                'email' => 'chef.agence@cofibank.com',
+                'email' => 'chef.agence@cofidash.com',
                 'password' => 'password123',
                 'profile_code' => 'CHEF_AGENCE'
             ],
             [
                 'name' => 'CAF Test',
-                'email' => 'caf@cofibank.com',
+                'email' => 'caf@cofidash.com',
                 'password' => 'password123',
                 'profile_code' => 'CAF'
             ],
             [
                 'name' => 'Administrateur',
-                'email' => 'admin@cofibank.com',
+                'email' => 'admin@cofidash.com',
                 'password' => 'password123',
                 'profile_code' => 'ADMIN'
             ]
@@ -78,12 +78,12 @@ class UserTestSeeder extends Seeder
 
         $this->command->info("\n📋 Résumé des utilisateurs de test créés :");
         $this->command->info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        $this->command->info("MD (Directeur Général)          : md@cofibank.com / password123");
-        $this->command->info("DGA (Directeur Général Adjoint)  : dga@cofibank.com / password123");
-        $this->command->info("Responsable Zone                : responsable.zone@cofibank.com / password123");
-        $this->command->info("Chef d'Agence                    : chef.agence@cofibank.com / password123");
-        $this->command->info("CAF                              : caf@cofibank.com / password123");
-        $this->command->info("Admin                            : admin@cofibank.com / password123");
+        $this->command->info("MD (Directeur Général)          : md@cofidash.com / password123");
+        $this->command->info("DGA (Directeur Général Adjoint)  : dga@cofidash.com / password123");
+        $this->command->info("Responsable Zone                : responsable.zone@cofidash.com / password123");
+        $this->command->info("Chef d'Agence                    : chef.agence@cofidash.com / password123");
+        $this->command->info("CAF                              : caf@cofidash.com / password123");
+        $this->command->info("Admin                            : admin@cofidash.com / password123");
         $this->command->info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     }
 }

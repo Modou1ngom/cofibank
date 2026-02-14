@@ -102,6 +102,7 @@
               <option value="DEPOT_GARANTIE">Dépôt de Garantie</option>
               <option value="EPARGNE_SIMPLE">Épargne Simple</option>
               <option value="EPARGNE_PROJET">Épargne Projet</option>
+              <option value="VOLUME_DAT">Volume DAT</option>
               <!--<option value="PRODUCTION_ENCOURS">Objectif Production Encours</option>-->
             </select>
           </div>
@@ -607,7 +608,8 @@ export default {
         { code: 'COLLECT', label: 'Objectif Collecte' },
         { code: 'DEPOT_GARANTIE', label: 'Dépôt de Garantie' },
         { code: 'EPARGNE_SIMPLE', label: 'Épargne Simple' },
-        { code: 'EPARGNE_PROJET', label: 'Épargne Projet' }
+        { code: 'EPARGNE_PROJET', label: 'Épargne Projet' },
+        { code: 'VOLUME_DAT', label: 'Volume DAT' }
       ];
     },
     isResponsableZone() {
@@ -1745,7 +1747,8 @@ export default {
         'PRODUCTION_VOLUME': 'Production Volume',
         'ENCOURS_CREDIT': 'Encours Crédit',
         'COLLECT': 'Collecte',
-        'PRODUCTION_ENCOURS': 'Production Encours'
+        'PRODUCTION_ENCOURS': 'Production Encours',
+        'VOLUME_DAT': 'Volume DAT'
       };
       return typeMap[typeCode] || typeCode;
     },

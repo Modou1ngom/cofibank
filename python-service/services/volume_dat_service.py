@@ -79,7 +79,24 @@ def get_volume_dat_data(period: str = "month", zone: Optional[str] = None,
     m_end_str = m_end.strftime("%d/%m/%Y")
     m1_end_str = m1_end.strftime("%d/%m/%Y")
     
-    logger.info(f"📅 Dates calculées: M fin={m_end_str}, M-1 fin={m1_end_str}")
+    # Calculer les dates de début du mois M pour les dettes rattachées
+    if period == "month":
+        m_start = datetime(year, month, 1)
+    elif period == "year":
+        m_start = datetime(year, 1, 1)
+    elif period == "week":
+        # Pour la semaine, utiliser le lundi de la semaine
+        from datetime import timedelta
+        days_since_monday = reference_date.weekday()
+        monday = reference_date - timedelta(days=days_since_monday)
+        m_start = monday
+    else:
+        now = datetime.now()
+        m_start = datetime(now.year, now.month, 1)
+    
+    m_start_str = m_start.strftime("%d/%m/%Y")
+    
+    logger.info(f"📅 Dates calculées: M début={m_start_str}, M fin={m_end_str}, M-1 fin={m1_end_str}")
     
     # Utiliser le pool de connexions et le cache
     from database.oracle_pool import get_pool
@@ -107,17 +124,33 @@ def get_volume_dat_data(period: str = "month", zone: Optional[str] = None,
             
             # Construire la requête SQL avec les dates dynamiques
             query = f"""
-WITH JOURNAL AS (
+WITH Journal AS (
+    SELECT
+        TRN_REF_NO, AC_ENTRY_SR_NO, EVENT_SR_NO, EVENT, AC_BRANCH, AC_NO, AC_CCY, CATEGORY, DRCR_IND, TRN_CODE, FCY_AMOUNT, EXCH_RATE, LCY_AMOUNT, VALUE_DT AS TRN_DT, VALUE_DT, TXN_INIT_DATE, AMOUNT_TAG, RELATED_ACCOUNT, RELATED_CUSTOMER, RELATED_REFERENCE, MIS_HEAD, MIS_FLAG, INSTRUMENT_CODE, BANK_CODE, BALANCE_UPD, AUTH_STAT, MODULE, CUST_GL, DLY_HIST, FINANCIAL_CYCLE, PERIOD_CODE, BATCH_NO, USER_ID, CURR_NO, PRINT_STAT, AUTH_ID, GLMIS_VAL_UPD_FLAG, EXTERNAL_REF_NO, DONT_SHOWIN_STMT, IC_BAL_INCLUSION, AML_EXCEPTION, IB, GLMIS_UPDATE_FLAG, PRODUCT_ACCRUAL, ORIG_PNL_GL, STMT_DT, ENTRY_SEQ_NO, VIRTUAL_AC_NO, CLAIM_AMOUNT, GRP_REF_NO, SAVE_TIMESTAMP, AUTH_TIMESTAMP, PRODUCT_PROCESSOR, RELATED_AC_ENTRY_SR_NO, DONT_SHOWIN_STMT_FEE, ORG_SOURCE, ORG_SOURCE_REF, SOURCE_CODE
+    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES 
+    WHERE MODULE = 'DE'
+ 
+    UNION
+ 
+    SELECT
+        TRN_REF_NO, AC_ENTRY_SR_NO, EVENT_SR_NO, EVENT, AC_BRANCH, AC_NO, AC_CCY, CATEGORY, DRCR_IND, TRN_CODE, FCY_AMOUNT, EXCH_RATE, LCY_AMOUNT, TRN_DT, VALUE_DT, TXN_INIT_DATE, AMOUNT_TAG, RELATED_ACCOUNT, RELATED_CUSTOMER, RELATED_REFERENCE, MIS_HEAD, MIS_FLAG, INSTRUMENT_CODE, BANK_CODE, BALANCE_UPD, AUTH_STAT, MODULE, CUST_GL, DLY_HIST, FINANCIAL_CYCLE, PERIOD_CODE, BATCH_NO, USER_ID, CURR_NO, PRINT_STAT, AUTH_ID, GLMIS_VAL_UPD_FLAG, EXTERNAL_REF_NO, DONT_SHOWIN_STMT, IC_BAL_INCLUSION, AML_EXCEPTION, IB, GLMIS_UPDATE_FLAG, PRODUCT_ACCRUAL, ORIG_PNL_GL, STMT_DT, ENTRY_SEQ_NO, VIRTUAL_AC_NO, CLAIM_AMOUNT, GRP_REF_NO, SAVE_TIMESTAMP, AUTH_TIMESTAMP, PRODUCT_PROCESSOR, RELATED_AC_ENTRY_SR_NO, DONT_SHOWIN_STMT_FEE, ORG_SOURCE, ORG_SOURCE_REF, SOURCE_CODE
+    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES 
+    WHERE MODULE <> 'DE'
+),
+
+JOURNAL AS (
     SELECT
         AC_ENTRY_SR_NO,
         AC_NO,
+        AC_BRANCH,
         DRCR_IND,
         LCY_AMOUNT,
-        CASE 
-            WHEN MODULE = 'DE' THEN VALUE_DT 
-            ELSE TRN_DT 
-        END AS TRN_DT
-    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES
+        AMOUNT_TAG,
+        RELATED_ACCOUNT,
+        TRN_CODE,
+        TRN_DT,
+        MODULE
+    FROM Journal
 ),
  
 COMPTE AS (
@@ -139,7 +172,23 @@ BRANCH AS (
         BRANCH_NAME
     FROM CFSFCUBS145.STTM_BRANCH
 ),
- 
+
+-- DETTES RATTACHEES DAT
+RESUL_DETTES_RAT_DAT AS (
+    SELECT 
+        ar.AC_BRANCH as CODE_AGENCE,
+        b.BRANCH_NAME as AGENCE,
+        SUM(ar.LCY_AMOUNT) as VOLUME_DETTES_RATTACHEES_DAT_M
+    FROM Journal ar
+    LEFT JOIN BRANCH b ON b.BRANCH_CODE = ar.AC_BRANCH
+    WHERE ar.AMOUNT_TAG='IACR'
+        AND ar.RELATED_ACCOUNT LIKE '252%'
+        AND ar.DRCR_IND='D'
+        AND ar.TRN_CODE='045'
+        AND ar.AC_NO='602520000001'
+        AND ar.TRN_DT BETWEEN TO_DATE('{m_start_str}','DD/MM/YYYY') AND TO_DATE('{m_end_str}','DD/MM/YYYY')
+    GROUP BY ar.AC_BRANCH, b.BRANCH_NAME
+),
  
 -- DAT
 DAT AS (
@@ -164,13 +213,20 @@ SELECT
     NVL(ROUND(
         (((O.M - O.M_1)) / NULLIF(O.M_1, 0)) * 100, 
         2
-    ), 0) AS "VARIATION_DAT%"
+    ), 0) AS "VARIATION_DAT%",
+    NVL(D.DETTES_RATTACHEES_DAT_M, 0) as DETTES_RATTACHEES_DAT_M
 FROM DAT O
 LEFT JOIN BRANCH BR ON BR.BRANCH_CODE = O.BRANCH_CODE
+LEFT JOIN (
+    SELECT CODE_AGENCE, SUM(VOLUME_DETTES_RATTACHEES_DAT_M) as DETTES_RATTACHEES_DAT_M
+    FROM RESUL_DETTES_RAT_DAT
+    GROUP BY CODE_AGENCE
+) D ON D.CODE_AGENCE = O.BRANCH_CODE
 ORDER BY BR.BRANCH_NAME
 """
             
             logger.info(f"⏱️  Exécution de la requête Volume DAT (timeout: 5 minutes)")
+            logger.info(f"📅 Dates utilisées pour dettes rattachées: {m_start_str} à {m_end_str}")
             cursor.execute(query)
             
             # Récupérer les résultats
@@ -181,6 +237,11 @@ ORDER BY BR.BRANCH_NAME
                 data.append(row_dict)
             
             logger.info(f"📊 {len(data)} lignes récupérées depuis Oracle")
+            
+            # Log des premières lignes pour déboguer
+            if len(data) > 0:
+                sample_row = data[0]
+                logger.info(f"🔍 Exemple de données récupérées: BRANCH_CODE={sample_row.get('BRANCH_CODE')}, AGENCE={sample_row.get('AGENCE')}, DETTES_RATTACHEES_DAT_M={sample_row.get('DETTES_RATTACHEES_DAT_M')}")
             
             if len(data) == 0:
                 logger.warning("⚠️ Aucune donnée Volume DAT trouvée")
@@ -217,7 +278,9 @@ ORDER BY BR.BRANCH_NAME
                     'DAT_M': float(row.get('DAT_M') or 0),
                     'VARIATION_VOLUME_DA': float(row.get('VARIATION_VOLUME_DA') or 0),
                     'VARIATION_DAT': float(variation_dat_value),
-                    'VARIATION_DAT%': float(variation_dat_value)  # Alias pour compatibilité
+                    'VARIATION_DAT%': float(variation_dat_value),  # Alias pour compatibilité
+                    'DETTES_RATTACHEES_DAT_M': float(row.get('DETTES_RATTACHEES_DAT_M') or 0),
+                    'DETTES_RATTACHEES_DAT': float(row.get('DETTES_RATTACHEES_DAT_M') or 0)  # Alias
                 }
                 
                 # Déterminer le territoire
@@ -248,13 +311,15 @@ ORDER BY BR.BRANCH_NAME
                     'datM1': 0,
                     'datM': 0,
                     'variationVolumeDa': 0,
-                    'variationDat': 0
+                    'variationDat': 0,
+                    'dettesRattacheesDat': 0
                 }
                 for agency in agencies_list:
                     totals['datM1'] += float(agency.get('DAT_M_1', 0) or 0)
                     totals['datM'] += float(agency.get('DAT_M', 0) or 0)
                     totals['variationVolumeDa'] += float(agency.get('VARIATION_VOLUME_DA', 0) or 0)
                     totals['variationDat'] += float(agency.get('VARIATION_DAT', 0) or 0)
+                    totals['dettesRattacheesDat'] += float(agency.get('DETTES_RATTACHEES_DAT_M', 0) or agency.get('DETTES_RATTACHEES_DAT', 0) or 0)
                 return totals
             
             # Construire la structure hiérarchique
@@ -299,7 +364,8 @@ ORDER BY BR.BRANCH_NAME
                             'datM1': grand_compte.get('DAT_M_1', 0),
                             'datM': grand_compte.get('DAT_M', 0),
                             'variationVolumeDa': grand_compte.get('VARIATION_VOLUME_DA', 0),
-                            'variationDat': grand_compte.get('VARIATION_DAT', 0)
+                            'variationDat': grand_compte.get('VARIATION_DAT', 0),
+                            'dettesRattacheesDat': grand_compte.get('DETTES_RATTACHEES_DAT_M', 0) or grand_compte.get('DETTES_RATTACHEES_DAT', 0) or 0
                         }
                     }
             

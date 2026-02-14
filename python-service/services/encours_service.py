@@ -76,11 +76,52 @@ def get_encours_data(period: str = "month", zone: Optional[str] = None,
         else:
             m1_end = datetime(now.year, now.month - 1, calendar.monthrange(now.year, now.month - 1)[1])
     
+    # Calculer les dates de début du mois M et M-1 pour les dettes rattachées
+    if period == "month":
+        m_start = datetime(year, month, 1)
+        if month == 1:
+            m1_start = datetime(year - 1, 12, 1)
+        else:
+            m1_start = datetime(year, month - 1, 1)
+    elif period == "year":
+        m_start = datetime(year, 1, 1)
+        m1_start = datetime(year - 1, 1, 1)
+    elif period == "week":
+        # Pour la semaine, utiliser la date fournie ou aujourd'hui
+        if date:
+            try:
+                reference_date = datetime.strptime(date, "%Y-%m-%d")
+            except (ValueError, TypeError):
+                reference_date = datetime.now()
+        else:
+            reference_date = datetime.now()
+        
+        # Trouver le lundi de la semaine (début de semaine)
+        from datetime import timedelta
+        days_since_monday = reference_date.weekday()
+        monday = reference_date - timedelta(days=days_since_monday)
+        m_start = monday
+        
+        # Semaine précédente
+        m1_start = monday - timedelta(days=7)
+        m1_end = monday - timedelta(days=1)
+    else:
+        # Par défaut, utiliser le mois actuel
+        now = datetime.now()
+        m_start = datetime(now.year, now.month, 1)
+        if now.month == 1:
+            m1_start = datetime(now.year - 1, 12, 1)
+        else:
+            m1_start = datetime(now.year, now.month - 1, 1)
+    
     # Formater les dates pour Oracle (DD/MM/YYYY)
     m_end_str = m_end.strftime("%d/%m/%Y")
     m1_end_str = m1_end.strftime("%d/%m/%Y")
+    m_start_str = m_start.strftime("%d/%m/%Y")
+    m1_start_str = m1_start.strftime("%d/%m/%Y")
     
     logger.info(f"📅 Dates calculées: M fin={m_end_str}, M-1 fin={m1_end_str}")
+    logger.info(f"📅 Dates dettes rattachées: M début={m_start_str}, M fin={m_end_str}, M-1 début={m1_start_str}, M-1 fin={m1_end_str}")
     
     # Utiliser le pool de connexions et le cache
     from database.oracle_pool import get_pool
@@ -320,17 +361,36 @@ ORDER BY o.BRANCH_CODE, o.BRANCH_NAME
 """
             elif encours_type == "epargne-simple":
                 query = f"""
-WITH JOURNAL AS (
+WITH Journal AS (
+    SELECT
+        TRN_REF_NO, AC_ENTRY_SR_NO, EVENT_SR_NO, EVENT, AC_BRANCH, AC_NO, AC_CCY, CATEGORY, DRCR_IND, TRN_CODE, FCY_AMOUNT, EXCH_RATE, LCY_AMOUNT, VALUE_DT AS TRN_DT, VALUE_DT, TXN_INIT_DATE, AMOUNT_TAG, RELATED_ACCOUNT, RELATED_CUSTOMER, RELATED_REFERENCE, MIS_HEAD, MIS_FLAG, INSTRUMENT_CODE, BANK_CODE, BALANCE_UPD, AUTH_STAT, MODULE, CUST_GL, DLY_HIST, FINANCIAL_CYCLE, PERIOD_CODE, BATCH_NO, USER_ID, CURR_NO, PRINT_STAT, AUTH_ID, GLMIS_VAL_UPD_FLAG, EXTERNAL_REF_NO, DONT_SHOWIN_STMT, IC_BAL_INCLUSION, AML_EXCEPTION, IB, GLMIS_UPDATE_FLAG, PRODUCT_ACCRUAL, ORIG_PNL_GL, STMT_DT, ENTRY_SEQ_NO, VIRTUAL_AC_NO, CLAIM_AMOUNT, GRP_REF_NO, SAVE_TIMESTAMP, AUTH_TIMESTAMP, PRODUCT_PROCESSOR, RELATED_AC_ENTRY_SR_NO, DONT_SHOWIN_STMT_FEE, ORG_SOURCE, ORG_SOURCE_REF, SOURCE_CODE,
+        CASE 
+            WHEN MODULE = 'DE' THEN VALUE_DT 
+            ELSE TRN_DT 
+        END AS TRN_DT_CALC
+    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES 
+    WHERE MODULE = 'DE'
+ 
+    UNION
+ 
+    SELECT
+        TRN_REF_NO, AC_ENTRY_SR_NO, EVENT_SR_NO, EVENT, AC_BRANCH, AC_NO, AC_CCY, CATEGORY, DRCR_IND, TRN_CODE, FCY_AMOUNT, EXCH_RATE, LCY_AMOUNT, TRN_DT, VALUE_DT, TXN_INIT_DATE, AMOUNT_TAG, RELATED_ACCOUNT, RELATED_CUSTOMER, RELATED_REFERENCE, MIS_HEAD, MIS_FLAG, INSTRUMENT_CODE, BANK_CODE, BALANCE_UPD, AUTH_STAT, MODULE, CUST_GL, DLY_HIST, FINANCIAL_CYCLE, PERIOD_CODE, BATCH_NO, USER_ID, CURR_NO, PRINT_STAT, AUTH_ID, GLMIS_VAL_UPD_FLAG, EXTERNAL_REF_NO, DONT_SHOWIN_STMT, IC_BAL_INCLUSION, AML_EXCEPTION, IB, GLMIS_UPDATE_FLAG, PRODUCT_ACCRUAL, ORIG_PNL_GL, STMT_DT, ENTRY_SEQ_NO, VIRTUAL_AC_NO, CLAIM_AMOUNT, GRP_REF_NO, SAVE_TIMESTAMP, AUTH_TIMESTAMP, PRODUCT_PROCESSOR, RELATED_AC_ENTRY_SR_NO, DONT_SHOWIN_STMT_FEE, ORG_SOURCE, ORG_SOURCE_REF, SOURCE_CODE,
+        CASE 
+            WHEN MODULE = 'DE' THEN VALUE_DT 
+            ELSE TRN_DT 
+        END AS TRN_DT_CALC
+    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES 
+    WHERE MODULE <> 'DE'
+),
+
+JOURNAL AS (
     SELECT
         AC_ENTRY_SR_NO,
         AC_NO,
         DRCR_IND,
         LCY_AMOUNT,
-        CASE 
-            WHEN MODULE = 'DE' THEN VALUE_DT 
-            ELSE TRN_DT 
-        END AS TRN_DT
-    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES
+        TRN_DT_CALC AS TRN_DT
+    FROM Journal
 ),
  
 COMPTE AS (
@@ -515,6 +575,40 @@ encours_credit AS (
     LEFT JOIN ENCOURS_M_1 e1 ON e1.NO_PRET = e.NO_PRET
     LEFT JOIN BRANCH br ON br.BRANCH_CODE = COALESCE(e1.BRANCH_CODE, e.BRANCH_CODE)
     GROUP BY COALESCE(e1.BRANCH_CODE, e.BRANCH_CODE), br.BRANCH_NAME
+),
+
+-- Dettes rattachées épargne pour le mois M
+RESUL_DETTES_RATTACHEES_EPARGNES_M AS (
+    SELECT 
+        ar.AC_BRANCH AS CODE_AGENCE,
+        b.BRANCH_NAME AS AGENCE,
+        SUM(ar.LCY_AMOUNT) AS DETTES_RATTACHEES_EPARGNE_M
+    FROM Journal ar
+    LEFT JOIN CFSFCUBS145.STTM_BRANCH b ON b.BRANCH_CODE = ar.AC_BRANCH
+    WHERE ar.AMOUNT_TAG='IACR'
+      AND ar.RELATED_ACCOUNT LIKE '253%'
+      AND ar.DRCR_IND='D'
+      AND ar.TRN_CODE='045'
+      AND ar.AC_NO='602530000001'
+      AND ar.TRN_DT_CALC BETWEEN TO_DATE('{m_start_str}','DD/MM/YYYY') AND TO_DATE('{m_end_str}','DD/MM/YYYY')
+    GROUP BY ar.AC_BRANCH, b.BRANCH_NAME
+),
+
+-- Dettes rattachées épargne pour le mois M-1
+RESUL_DETTES_RATTACHEES_EPARGNES_M1 AS (
+    SELECT 
+        ar.AC_BRANCH AS CODE_AGENCE,
+        b.BRANCH_NAME AS AGENCE,
+        SUM(ar.LCY_AMOUNT) AS DETTES_RATTACHEES_EPARGNE_M1
+    FROM Journal ar
+    LEFT JOIN CFSFCUBS145.STTM_BRANCH b ON b.BRANCH_CODE = ar.AC_BRANCH
+    WHERE ar.AMOUNT_TAG='IACR'
+      AND ar.RELATED_ACCOUNT LIKE '253%'
+      AND ar.DRCR_IND='D'
+      AND ar.TRN_CODE='045'
+      AND ar.AC_NO='602530000001'
+      AND ar.TRN_DT_CALC BETWEEN TO_DATE('{m1_start_str}','DD/MM/YYYY') AND TO_DATE('{m1_end_str}','DD/MM/YYYY')
+    GROUP BY ar.AC_BRANCH, b.BRANCH_NAME
 )
 
 SELECT 
@@ -522,24 +616,47 @@ SELECT
     o.BRANCH_NAME,
     NVL(v.ENCOURS_TOTAL_M,0)         AS ENCOURS_TOTAL_M,
     o.M_ENCOURS_COMPTE_EPARGNE,
-    o.M1_ENCOURS_COMPTE_EPARGNE
+    o.M1_ENCOURS_COMPTE_EPARGNE,
+    NVL(dm.DETTES_RATTACHEES_EPARGNE_M, 0) AS DETTE_RATTACHEE,
+    NVL(dm1.DETTES_RATTACHEES_EPARGNE_M1, 0) AS DETTE_RATTACHEE_M1
 FROM depot o
 LEFT JOIN encours_credit v ON o.BRANCH_CODE = v.BRANCH_CODE
+LEFT JOIN RESUL_DETTES_RATTACHEES_EPARGNES_M dm ON o.BRANCH_CODE = dm.CODE_AGENCE
+LEFT JOIN RESUL_DETTES_RATTACHEES_EPARGNES_M1 dm1 ON o.BRANCH_CODE = dm1.CODE_AGENCE
 ORDER BY o.BRANCH_CODE, o.BRANCH_NAME
 """
             elif encours_type == "epargne-pep-simple":
                 query = f"""
-WITH JOURNAL AS (
+WITH Journal AS (
+    SELECT
+        TRN_REF_NO, AC_ENTRY_SR_NO, EVENT_SR_NO, EVENT, AC_BRANCH, AC_NO, AC_CCY, CATEGORY, DRCR_IND, TRN_CODE, FCY_AMOUNT, EXCH_RATE, LCY_AMOUNT, VALUE_DT AS TRN_DT, VALUE_DT, TXN_INIT_DATE, AMOUNT_TAG, RELATED_ACCOUNT, RELATED_CUSTOMER, RELATED_REFERENCE, MIS_HEAD, MIS_FLAG, INSTRUMENT_CODE, BANK_CODE, BALANCE_UPD, AUTH_STAT, MODULE, CUST_GL, DLY_HIST, FINANCIAL_CYCLE, PERIOD_CODE, BATCH_NO, USER_ID, CURR_NO, PRINT_STAT, AUTH_ID, GLMIS_VAL_UPD_FLAG, EXTERNAL_REF_NO, DONT_SHOWIN_STMT, IC_BAL_INCLUSION, AML_EXCEPTION, IB, GLMIS_UPDATE_FLAG, PRODUCT_ACCRUAL, ORIG_PNL_GL, STMT_DT, ENTRY_SEQ_NO, VIRTUAL_AC_NO, CLAIM_AMOUNT, GRP_REF_NO, SAVE_TIMESTAMP, AUTH_TIMESTAMP, PRODUCT_PROCESSOR, RELATED_AC_ENTRY_SR_NO, DONT_SHOWIN_STMT_FEE, ORG_SOURCE, ORG_SOURCE_REF, SOURCE_CODE,
+        CASE 
+            WHEN MODULE = 'DE' THEN VALUE_DT 
+            ELSE TRN_DT 
+        END AS TRN_DT_CALC
+    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES 
+    WHERE MODULE = 'DE'
+ 
+    UNION
+ 
+    SELECT
+        TRN_REF_NO, AC_ENTRY_SR_NO, EVENT_SR_NO, EVENT, AC_BRANCH, AC_NO, AC_CCY, CATEGORY, DRCR_IND, TRN_CODE, FCY_AMOUNT, EXCH_RATE, LCY_AMOUNT, TRN_DT, VALUE_DT, TXN_INIT_DATE, AMOUNT_TAG, RELATED_ACCOUNT, RELATED_CUSTOMER, RELATED_REFERENCE, MIS_HEAD, MIS_FLAG, INSTRUMENT_CODE, BANK_CODE, BALANCE_UPD, AUTH_STAT, MODULE, CUST_GL, DLY_HIST, FINANCIAL_CYCLE, PERIOD_CODE, BATCH_NO, USER_ID, CURR_NO, PRINT_STAT, AUTH_ID, GLMIS_VAL_UPD_FLAG, EXTERNAL_REF_NO, DONT_SHOWIN_STMT, IC_BAL_INCLUSION, AML_EXCEPTION, IB, GLMIS_UPDATE_FLAG, PRODUCT_ACCRUAL, ORIG_PNL_GL, STMT_DT, ENTRY_SEQ_NO, VIRTUAL_AC_NO, CLAIM_AMOUNT, GRP_REF_NO, SAVE_TIMESTAMP, AUTH_TIMESTAMP, PRODUCT_PROCESSOR, RELATED_AC_ENTRY_SR_NO, DONT_SHOWIN_STMT_FEE, ORG_SOURCE, ORG_SOURCE_REF, SOURCE_CODE,
+        CASE 
+            WHEN MODULE = 'DE' THEN VALUE_DT 
+            ELSE TRN_DT 
+        END AS TRN_DT_CALC
+    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES 
+    WHERE MODULE <> 'DE'
+),
+
+JOURNAL AS (
     SELECT
         AC_ENTRY_SR_NO,
         AC_NO,
         DRCR_IND,
         LCY_AMOUNT,
-        CASE 
-            WHEN MODULE = 'DE' THEN VALUE_DT 
-            ELSE TRN_DT 
-        END AS TRN_DT
-    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES
+        TRN_DT_CALC AS TRN_DT
+    FROM Journal
 ),
  
 COMPTE AS (
@@ -724,6 +841,40 @@ encours_credit AS (
     LEFT JOIN ENCOURS_M_1 e1 ON e1.NO_PRET = e.NO_PRET
     LEFT JOIN BRANCH br ON br.BRANCH_CODE = COALESCE(e1.BRANCH_CODE, e.BRANCH_CODE)
     GROUP BY COALESCE(e1.BRANCH_CODE, e.BRANCH_CODE), br.BRANCH_NAME
+),
+
+-- Dettes rattachées épargne pour le mois M
+RESUL_DETTES_RATTACHEES_EPARGNES_M AS (
+    SELECT 
+        ar.AC_BRANCH AS CODE_AGENCE,
+        b.BRANCH_NAME AS AGENCE,
+        SUM(ar.LCY_AMOUNT) AS DETTES_RATTACHEES_EPARGNE_M
+    FROM Journal ar
+    LEFT JOIN CFSFCUBS145.STTM_BRANCH b ON b.BRANCH_CODE = ar.AC_BRANCH
+    WHERE ar.AMOUNT_TAG='IACR'
+      AND ar.RELATED_ACCOUNT LIKE '253%'
+      AND ar.DRCR_IND='D'
+      AND ar.TRN_CODE='045'
+      AND ar.AC_NO='602530000001'
+      AND ar.TRN_DT_CALC BETWEEN TO_DATE('{m_start_str}','DD/MM/YYYY') AND TO_DATE('{m_end_str}','DD/MM/YYYY')
+    GROUP BY ar.AC_BRANCH, b.BRANCH_NAME
+),
+
+-- Dettes rattachées épargne pour le mois M-1
+RESUL_DETTES_RATTACHEES_EPARGNES_M1 AS (
+    SELECT 
+        ar.AC_BRANCH AS CODE_AGENCE,
+        b.BRANCH_NAME AS AGENCE,
+        SUM(ar.LCY_AMOUNT) AS DETTES_RATTACHEES_EPARGNE_M1
+    FROM Journal ar
+    LEFT JOIN CFSFCUBS145.STTM_BRANCH b ON b.BRANCH_CODE = ar.AC_BRANCH
+    WHERE ar.AMOUNT_TAG='IACR'
+      AND ar.RELATED_ACCOUNT LIKE '253%'
+      AND ar.DRCR_IND='D'
+      AND ar.TRN_CODE='045'
+      AND ar.AC_NO='602530000001'
+      AND ar.TRN_DT_CALC BETWEEN TO_DATE('{m1_start_str}','DD/MM/YYYY') AND TO_DATE('{m1_end_str}','DD/MM/YYYY')
+    GROUP BY ar.AC_BRANCH, b.BRANCH_NAME
 )
 
 SELECT 
@@ -739,24 +890,47 @@ SELECT
     o.M1_ENCOURS_COMPTE_EPARGNE,
     o.M1_ENCOURS_COMPTE_EPARGNE_PROJET,
     o.M1_ENCOURS_DAT,
-    o.M1_ENCOURS_DEPOT_GARANTIE
+    o.M1_ENCOURS_DEPOT_GARANTIE,
+    NVL(dm.DETTES_RATTACHEES_EPARGNE_M, 0) AS DETTE_RATTACHEE,
+    NVL(dm1.DETTES_RATTACHEES_EPARGNE_M1, 0) AS DETTE_RATTACHEE_M1
 FROM depot o
 LEFT JOIN encours_credit v ON o.BRANCH_CODE = v.BRANCH_CODE
+LEFT JOIN RESUL_DETTES_RATTACHEES_EPARGNES_M dm ON o.BRANCH_CODE = dm.CODE_AGENCE
+LEFT JOIN RESUL_DETTES_RATTACHEES_EPARGNES_M1 dm1 ON o.BRANCH_CODE = dm1.CODE_AGENCE
 ORDER BY o.BRANCH_CODE, o.BRANCH_NAME
 """
             elif encours_type == "epargne-projet":
                 query = f"""
-WITH JOURNAL AS (
+WITH Journal AS (
+    SELECT
+        TRN_REF_NO, AC_ENTRY_SR_NO, EVENT_SR_NO, EVENT, AC_BRANCH, AC_NO, AC_CCY, CATEGORY, DRCR_IND, TRN_CODE, FCY_AMOUNT, EXCH_RATE, LCY_AMOUNT, VALUE_DT AS TRN_DT, VALUE_DT, TXN_INIT_DATE, AMOUNT_TAG, RELATED_ACCOUNT, RELATED_CUSTOMER, RELATED_REFERENCE, MIS_HEAD, MIS_FLAG, INSTRUMENT_CODE, BANK_CODE, BALANCE_UPD, AUTH_STAT, MODULE, CUST_GL, DLY_HIST, FINANCIAL_CYCLE, PERIOD_CODE, BATCH_NO, USER_ID, CURR_NO, PRINT_STAT, AUTH_ID, GLMIS_VAL_UPD_FLAG, EXTERNAL_REF_NO, DONT_SHOWIN_STMT, IC_BAL_INCLUSION, AML_EXCEPTION, IB, GLMIS_UPDATE_FLAG, PRODUCT_ACCRUAL, ORIG_PNL_GL, STMT_DT, ENTRY_SEQ_NO, VIRTUAL_AC_NO, CLAIM_AMOUNT, GRP_REF_NO, SAVE_TIMESTAMP, AUTH_TIMESTAMP, PRODUCT_PROCESSOR, RELATED_AC_ENTRY_SR_NO, DONT_SHOWIN_STMT_FEE, ORG_SOURCE, ORG_SOURCE_REF, SOURCE_CODE,
+        CASE 
+            WHEN MODULE = 'DE' THEN VALUE_DT 
+            ELSE TRN_DT 
+        END AS TRN_DT_CALC
+    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES 
+    WHERE MODULE = 'DE'
+ 
+    UNION
+ 
+    SELECT
+        TRN_REF_NO, AC_ENTRY_SR_NO, EVENT_SR_NO, EVENT, AC_BRANCH, AC_NO, AC_CCY, CATEGORY, DRCR_IND, TRN_CODE, FCY_AMOUNT, EXCH_RATE, LCY_AMOUNT, TRN_DT, VALUE_DT, TXN_INIT_DATE, AMOUNT_TAG, RELATED_ACCOUNT, RELATED_CUSTOMER, RELATED_REFERENCE, MIS_HEAD, MIS_FLAG, INSTRUMENT_CODE, BANK_CODE, BALANCE_UPD, AUTH_STAT, MODULE, CUST_GL, DLY_HIST, FINANCIAL_CYCLE, PERIOD_CODE, BATCH_NO, USER_ID, CURR_NO, PRINT_STAT, AUTH_ID, GLMIS_VAL_UPD_FLAG, EXTERNAL_REF_NO, DONT_SHOWIN_STMT, IC_BAL_INCLUSION, AML_EXCEPTION, IB, GLMIS_UPDATE_FLAG, PRODUCT_ACCRUAL, ORIG_PNL_GL, STMT_DT, ENTRY_SEQ_NO, VIRTUAL_AC_NO, CLAIM_AMOUNT, GRP_REF_NO, SAVE_TIMESTAMP, AUTH_TIMESTAMP, PRODUCT_PROCESSOR, RELATED_AC_ENTRY_SR_NO, DONT_SHOWIN_STMT_FEE, ORG_SOURCE, ORG_SOURCE_REF, SOURCE_CODE,
+        CASE 
+            WHEN MODULE = 'DE' THEN VALUE_DT 
+            ELSE TRN_DT 
+        END AS TRN_DT_CALC
+    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES 
+    WHERE MODULE <> 'DE'
+),
+
+JOURNAL AS (
     SELECT
         AC_ENTRY_SR_NO,
         AC_NO,
         DRCR_IND,
         LCY_AMOUNT,
-        CASE 
-            WHEN MODULE = 'DE' THEN VALUE_DT 
-            ELSE TRN_DT 
-        END AS TRN_DT
-    FROM CFSFCUBS145.ACVW_ALL_AC_ENTRIES
+        TRN_DT_CALC AS TRN_DT
+    FROM Journal
 ),
  
 COMPTE AS (
@@ -941,6 +1115,40 @@ encours_credit AS (
     LEFT JOIN ENCOURS_M_1 e1 ON e1.NO_PRET = e.NO_PRET
     LEFT JOIN BRANCH br ON br.BRANCH_CODE = COALESCE(e1.BRANCH_CODE, e.BRANCH_CODE)
     GROUP BY COALESCE(e1.BRANCH_CODE, e.BRANCH_CODE), br.BRANCH_NAME
+),
+
+-- Dettes rattachées épargne pour le mois M
+RESUL_DETTES_RATTACHEES_EPARGNES_M AS (
+    SELECT 
+        ar.AC_BRANCH AS CODE_AGENCE,
+        b.BRANCH_NAME AS AGENCE,
+        SUM(ar.LCY_AMOUNT) AS DETTES_RATTACHEES_EPARGNE_M
+    FROM Journal ar
+    LEFT JOIN CFSFCUBS145.STTM_BRANCH b ON b.BRANCH_CODE = ar.AC_BRANCH
+    WHERE ar.AMOUNT_TAG='IACR'
+      AND ar.RELATED_ACCOUNT LIKE '253%'
+      AND ar.DRCR_IND='D'
+      AND ar.TRN_CODE='045'
+      AND ar.AC_NO='602530000001'
+      AND ar.TRN_DT_CALC BETWEEN TO_DATE('{m_start_str}','DD/MM/YYYY') AND TO_DATE('{m_end_str}','DD/MM/YYYY')
+    GROUP BY ar.AC_BRANCH, b.BRANCH_NAME
+),
+
+-- Dettes rattachées épargne pour le mois M-1
+RESUL_DETTES_RATTACHEES_EPARGNES_M1 AS (
+    SELECT 
+        ar.AC_BRANCH AS CODE_AGENCE,
+        b.BRANCH_NAME AS AGENCE,
+        SUM(ar.LCY_AMOUNT) AS DETTES_RATTACHEES_EPARGNE_M1
+    FROM Journal ar
+    LEFT JOIN CFSFCUBS145.STTM_BRANCH b ON b.BRANCH_CODE = ar.AC_BRANCH
+    WHERE ar.AMOUNT_TAG='IACR'
+      AND ar.RELATED_ACCOUNT LIKE '253%'
+      AND ar.DRCR_IND='D'
+      AND ar.TRN_CODE='045'
+      AND ar.AC_NO='602530000001'
+      AND ar.TRN_DT_CALC BETWEEN TO_DATE('{m1_start_str}','DD/MM/YYYY') AND TO_DATE('{m1_end_str}','DD/MM/YYYY')
+    GROUP BY ar.AC_BRANCH, b.BRANCH_NAME
 )
 
 SELECT 
@@ -956,9 +1164,13 @@ SELECT
     o.M1_ENCOURS_COMPTE_EPARGNE,
     o.M1_ENCOURS_COMPTE_EPARGNE_PROJET,
     o.M1_ENCOURS_DAT,
-    o.M1_ENCOURS_DEPOT_GARANTIE
+    o.M1_ENCOURS_DEPOT_GARANTIE,
+    NVL(dm.DETTES_RATTACHEES_EPARGNE_M, 0) AS DETTE_RATTACHEE,
+    NVL(dm1.DETTES_RATTACHEES_EPARGNE_M1, 0) AS DETTE_RATTACHEE_M1
 FROM depot o
 LEFT JOIN encours_credit v ON o.BRANCH_CODE = v.BRANCH_CODE
+LEFT JOIN RESUL_DETTES_RATTACHEES_EPARGNES_M dm ON o.BRANCH_CODE = dm.CODE_AGENCE
+LEFT JOIN RESUL_DETTES_RATTACHEES_EPARGNES_M1 dm1 ON o.BRANCH_CODE = dm1.CODE_AGENCE
 ORDER BY o.BRANCH_CODE, o.BRANCH_NAME
 """
             else:
@@ -976,9 +1188,16 @@ ORDER BY o.BRANCH_CODE, o.BRANCH_NAME
                 data.append(row_dict)
             
             logger.info(f"📊 {len(data)} lignes récupérées depuis Oracle")
-            if data and encours_type == "epargne-pep-simple":
+            if data and encours_type in ["epargne-pep-simple", "epargne-simple", "epargne-projet"]:
                 logger.info(f"🔍 Colonnes disponibles: {list(data[0].keys())}")
-                logger.info(f"🔍 Première ligne - DAT: {data[0].get('M_ENCOURS_DAT')}, DEPOT: {data[0].get('M_ENCOURS_DEPOT_GARANTIE')}")
+                if 'DETTE_RATTACHEE' in data[0]:
+                    logger.info(f"🔍 Première ligne - DETTE_RATTACHEE: {data[0].get('DETTE_RATTACHEE')}")
+                # Log quelques exemples de dettes rattachées
+                dettes_samples = [row.get('DETTE_RATTACHEE', 0) for row in data[:5] if row.get('DETTE_RATTACHEE', 0) != 0]
+                if dettes_samples:
+                    logger.info(f"🔍 Exemples de dettes rattachées trouvées: {dettes_samples}")
+                else:
+                    logger.warning(f"⚠️ Aucune dette rattachée non-nulle trouvée dans les {min(5, len(data))} premières lignes")
             
             if len(data) == 0:
                 logger.warning("⚠️ Aucune donnée Encours trouvée")
@@ -1013,7 +1232,9 @@ ORDER BY o.BRANCH_CODE, o.BRANCH_NAME
                         'M1_ENCOURS_COMPTE_EPARGNE': float(row.get('M1_ENCOURS_COMPTE_EPARGNE') or 0),
                         'M_ENCOURS_COMPTE_EPARGNE': float(row.get('M_ENCOURS_COMPTE_EPARGNE') or 0),
                         'ENCOURS_TOTAL_M': float(row.get('ENCOURS_TOTAL_M') or 0),
-                        'ENCOURS_TOTAL_M_1': float(row.get('ENCOURS_TOTAL_M_1') or 0)
+                        'ENCOURS_TOTAL_M_1': float(row.get('ENCOURS_TOTAL_M_1') or 0),
+                        'DETTE_RATTACHEE': float(row.get('DETTE_RATTACHEE') or 0),
+                        'detteRattachee': float(row.get('DETTE_RATTACHEE') or 0)
                     }
                 elif encours_type == "epargne-pep-simple":
                     agency = {
@@ -1031,7 +1252,9 @@ ORDER BY o.BRANCH_CODE, o.BRANCH_NAME
                         'M1_ENCOURS_DAT': float(row.get('M1_ENCOURS_DAT') or 0),
                         'M1_ENCOURS_DEPOT_GARANTIE': float(row.get('M1_ENCOURS_DEPOT_GARANTIE') or 0),
                         'ENCOURS_TOTAL_M': float(row.get('ENCOURS_TOTAL_M') or 0),
-                        'ENCOURS_TOTAL_M_1': float(row.get('ENCOURS_TOTAL_M_1') or 0)
+                        'ENCOURS_TOTAL_M_1': float(row.get('ENCOURS_TOTAL_M_1') or 0),
+                        'DETTE_RATTACHEE': float(row.get('DETTE_RATTACHEE') or 0),
+                        'detteRattachee': float(row.get('DETTE_RATTACHEE') or 0)
                     }
                 elif encours_type == "epargne-projet":
                     agency = {
@@ -1041,7 +1264,9 @@ ORDER BY o.BRANCH_CODE, o.BRANCH_NAME
                         'M_ENCOURS_COMPTE_EPARGNE_PROJET': float(row.get('M_ENCOURS_COMPTE_EPARGNE_PROJET') or 0),
                         'M1_ENCOURS_COMPTE_EPARGNE_PROJET': float(row.get('M1_ENCOURS_COMPTE_EPARGNE_PROJET') or 0),
                         'ENCOURS_TOTAL_M': float(row.get('ENCOURS_TOTAL_M') or 0),
-                        'ENCOURS_TOTAL_M_1': float(row.get('ENCOURS_TOTAL_M_1') or 0)
+                        'ENCOURS_TOTAL_M_1': float(row.get('ENCOURS_TOTAL_M_1') or 0),
+                        'DETTE_RATTACHEE': float(row.get('DETTE_RATTACHEE') or 0),
+                        'detteRattachee': float(row.get('DETTE_RATTACHEE') or 0)
                     }
                 else:
                     # Compte courant par défaut

@@ -1787,6 +1787,9 @@ export default {
             if (data.grandCompte) {
               this.grandCompteData = data.grandCompte;
             }
+            
+            // Charger les objectifs depuis Laravel et les fusionner avec les données Oracle
+            await this.loadObjectives();
           } else if (data.territories) {
             // Format territories (sans hierarchicalData)
             console.log('📊 Données territories reçues:', data.territories);
@@ -1844,6 +1847,9 @@ export default {
             if (data.grandCompte) {
               this.grandCompteData = data.grandCompte;
             }
+            
+            // Charger les objectifs depuis Laravel et les fusionner avec les données Oracle
+            await this.loadObjectives();
           } else if (data.corporateZones && data.retailZones) {
             // Format ancien pour compatibilité
             this.corporateZones = {
@@ -1984,6 +1990,12 @@ export default {
           this.errorMessage = 'Erreur de connexion. Veuillez vérifier que le service Oracle est accessible.';
         }
       } finally {
+        // Charger les objectifs même en cas d'erreur partielle
+        try {
+          await this.loadObjectives();
+        } catch (error) {
+          console.warn('⚠️ Erreur lors du chargement des objectifs:', error);
+        }
         this.loading = false;
       }
     },
@@ -2009,6 +2021,206 @@ export default {
       this.$nextTick(() => {
         this.loadDataForPeriod();
       });
+    },
+    async loadObjectives() {
+      // Charger les objectifs CLIENT depuis l'API Laravel
+      try {
+        const token = localStorage.getItem('token');
+        const params = {
+          type: 'CLIENT',
+          period: this.selectedPeriod === 'week' ? 'month' : this.selectedPeriod, // Pour la semaine, utiliser month
+          year: this.selectedYear
+        };
+        
+        // Ajouter les paramètres selon la période
+        if (this.selectedPeriod === 'month') {
+          params.month = this.selectedMonth;
+        } else if (this.selectedPeriod === 'quarter') {
+          params.quarter = Math.ceil(this.selectedMonth / 3); // Convertir le mois en trimestre
+        } else if (this.selectedPeriod === 'week') {
+          // Pour la semaine, utiliser le mois de la date sélectionnée
+          if (this.selectedDate) {
+            const date = new Date(this.selectedDate);
+            params.month = date.getMonth() + 1;
+          }
+        }
+        
+        console.log('📊 Chargement des objectifs CLIENT avec params:', params);
+        
+        const response = await window.axios.get('/api/objectives', {
+          params: params,
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.data && response.data.success && response.data.data) {
+          const objectives = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+          console.log('✅ Objectifs CLIENT chargés:', objectives.length);
+          
+          // Créer un map des objectifs par agency_code et agency_name
+          const objectivesMapByCode = {};
+          const objectivesMapByName = {};
+          objectives.forEach(obj => {
+            const agencyCode = obj.agency_code || '';
+            const agencyName = obj.agency_name || '';
+            const value = obj.value || 0;
+            
+            if (agencyCode) {
+              // Stocker l'objectif avec le code d'agence comme clé
+              objectivesMapByCode[agencyCode] = value;
+            }
+            if (agencyName) {
+              // Stocker aussi par nom d'agence (normalisé en majuscules)
+              const normalizedName = agencyName.toUpperCase().trim();
+              objectivesMapByName[normalizedName] = value;
+            }
+          });
+          
+          console.log('📊 Objectifs par code:', Object.keys(objectivesMapByCode).length);
+          console.log('📊 Objectifs par nom:', Object.keys(objectivesMapByName).length);
+          
+          // Fusionner les objectifs avec les données Oracle
+          this.mergeObjectivesWithOracleData(objectivesMapByCode, objectivesMapByName);
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur lors du chargement des objectifs:', error);
+        // Ne pas bloquer l'affichage si les objectifs ne peuvent pas être chargés
+      }
+    },
+    mergeObjectivesWithOracleData(objectivesMapByCode, objectivesMapByName) {
+      // Fusionner les objectifs avec les agences dans les territoires
+      Object.keys(this.territories).forEach(territoryKey => {
+        const territory = this.territories[territoryKey];
+        if (territory.agencies && Array.isArray(territory.agencies)) {
+          territory.agencies.forEach(agency => {
+            const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+            const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+            
+            // Chercher l'objectif par code d'agence d'abord
+            let objectiveValue = null;
+            if (agencyCode && objectivesMapByCode[agencyCode]) {
+              objectiveValue = objectivesMapByCode[agencyCode];
+              console.log(`✅ Objectif trouvé par code pour ${agencyName} (${agencyCode}):`, objectiveValue);
+            } else if (agencyName) {
+              // Essayer de trouver par nom d'agence (normalisé)
+              const normalizedName = agencyName.toUpperCase().trim();
+              if (objectivesMapByName[normalizedName]) {
+                objectiveValue = objectivesMapByName[normalizedName];
+                console.log(`✅ Objectif trouvé par nom pour ${agencyName}:`, objectiveValue);
+              }
+            }
+            
+            if (objectiveValue !== null) {
+              agency.objectif = objectiveValue;
+              agency.OBJECTIF_CLIENT = objectiveValue;
+            }
+          });
+        }
+      });
+      
+      // Fusionner avec les points de service
+      if (this.servicePoints && Array.isArray(this.servicePoints)) {
+        this.servicePoints.forEach(agency => {
+          const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+          const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+          
+          let objectiveValue = null;
+          if (agencyCode && objectivesMapByCode[agencyCode]) {
+            objectiveValue = objectivesMapByCode[agencyCode];
+            console.log(`✅ Objectif trouvé par code pour ${agencyName} (${agencyCode}):`, objectiveValue);
+          } else if (agencyName) {
+            const normalizedName = agencyName.toUpperCase().trim();
+            if (objectivesMapByName[normalizedName]) {
+              objectiveValue = objectivesMapByName[normalizedName];
+              console.log(`✅ Objectif trouvé par nom pour ${agencyName}:`, objectiveValue);
+            }
+          }
+          
+          if (objectiveValue !== null) {
+            agency.objectif = objectiveValue;
+            agency.OBJECTIF_CLIENT = objectiveValue;
+          }
+        });
+      }
+      
+      // Fusionner avec le grand compte
+      if (this.grandCompteData) {
+        const agencyCode = (this.grandCompteData.CODE_AGENCE || this.grandCompteData.code_agence || this.grandCompteData.code || this.grandCompteData.CODE || '').toString().trim();
+        const agencyName = (this.grandCompteData.name || this.grandCompteData.AGENCE || this.grandCompteData.NOM_AGENCE || '').toString().trim();
+        
+        let objectiveValue = null;
+        if (agencyCode && objectivesMapByCode[agencyCode]) {
+          objectiveValue = objectivesMapByCode[agencyCode];
+        } else if (agencyName) {
+          const normalizedName = agencyName.toUpperCase().trim();
+          if (objectivesMapByName[normalizedName]) {
+            objectiveValue = objectivesMapByName[normalizedName];
+          }
+        }
+        
+        if (objectiveValue !== null) {
+          this.grandCompteData.objectif = objectiveValue;
+          this.grandCompteData.OBJECTIF_CLIENT = objectiveValue;
+        }
+      }
+      
+      // Mettre à jour aussi hierarchicalDataFromBackend si disponible
+      if (this.hierarchicalDataFromBackend) {
+        this.updateHierarchicalDataWithObjectives(objectivesMapByCode, objectivesMapByName);
+      }
+    },
+    updateHierarchicalDataWithObjectives(objectivesMapByCode, objectivesMapByName) {
+      // Mettre à jour les objectifs dans la structure hiérarchique
+      if (this.hierarchicalDataFromBackend.TERRITOIRE) {
+        Object.keys(this.hierarchicalDataFromBackend.TERRITOIRE).forEach(territoryKey => {
+          const territory = this.hierarchicalDataFromBackend.TERRITOIRE[territoryKey];
+          if (territory.agencies && Array.isArray(territory.agencies)) {
+            territory.agencies.forEach(agency => {
+              const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+              const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+              
+              let objectiveValue = null;
+              if (agencyCode && objectivesMapByCode[agencyCode]) {
+                objectiveValue = objectivesMapByCode[agencyCode];
+              } else if (agencyName) {
+                const normalizedName = agencyName.toUpperCase().trim();
+                if (objectivesMapByName[normalizedName]) {
+                  objectiveValue = objectivesMapByName[normalizedName];
+                }
+              }
+              
+              if (objectiveValue !== null) {
+                agency.objectif = objectiveValue;
+                agency.OBJECTIF_CLIENT = objectiveValue;
+              }
+            });
+          }
+        });
+      }
+      
+      if (this.hierarchicalDataFromBackend['POINT SERVICES'] && this.hierarchicalDataFromBackend['POINT SERVICES'].service_points) {
+        const agencies = this.hierarchicalDataFromBackend['POINT SERVICES'].service_points.agencies || [];
+        agencies.forEach(agency => {
+          const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+          const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+          
+          let objectiveValue = null;
+          if (agencyCode && objectivesMapByCode[agencyCode]) {
+            objectiveValue = objectivesMapByCode[agencyCode];
+          } else if (agencyName) {
+            const normalizedName = agencyName.toUpperCase().trim();
+            if (objectivesMapByName[normalizedName]) {
+              objectiveValue = objectivesMapByName[normalizedName];
+            }
+          }
+          
+          if (objectiveValue !== null) {
+            agency.objectif = objectiveValue;
+            agency.OBJECTIF_CLIENT = objectiveValue;
+          }
+        });
+      }
     }
   }
 }

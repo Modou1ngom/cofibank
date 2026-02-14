@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script d'installation pour le service Python COFIBANK Charts API
+# Script d'installation pour le service Python COFIdash Charts API
 
 echo "========================================="
 echo "  Installation du Service Python"

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Script de démarrage du service Python pour COFIBANK Charts API
+# Script de démarrage du service Python pour COFIdash Charts API
 
-echo "Démarrage du service Python COFIBANK Charts API..."
+echo "Démarrage du service Python COFIdash Charts API..."
 
 # Vérifier si Python 3 est installé
 if ! command -v python3 &> /dev/null; then

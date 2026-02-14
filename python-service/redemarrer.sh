@@ -4,11 +4,38 @@
 
 echo "🔄 Arrêt du service Python Oracle..."
 
-# Trouver et arrêter le processus uvicorn
-pkill -f "uvicorn.*main:app" || pkill -f "python3.*main.py" || echo "Aucun processus trouvé"
+# Trouver et arrêter le processus qui utilise le port 8001
+PORT=8001
+PID=$(lsof -ti:$PORT 2>/dev/null)
 
-# Attendre un peu
-sleep 2
+if [ ! -z "$PID" ]; then
+    echo "   Arrêt du processus $PID qui utilise le port $PORT..."
+    kill -9 $PID 2>/dev/null
+    sleep 1
+fi
+
+# Aussi essayer de tuer les processus uvicorn/python correspondants
+pkill -f "uvicorn.*main:app" 2>/dev/null || true
+pkill -f "python3.*main.py" 2>/dev/null || true
+
+# Vérifier que le port est bien libéré
+echo "   Vérification que le port $PORT est libéré..."
+max_wait=10
+wait_count=0
+while [ $wait_count -lt $max_wait ]; do
+    if ! lsof -ti:$PORT > /dev/null 2>&1; then
+        echo "   ✅ Port $PORT libéré"
+        break
+    fi
+    wait_count=$((wait_count + 1))
+    sleep 1
+done
+
+if lsof -ti:$PORT > /dev/null 2>&1; then
+    echo "   ⚠️  Le port $PORT est toujours utilisé, tentative de libération forcée..."
+    kill -9 $(lsof -ti:$PORT) 2>/dev/null || true
+    sleep 2
+fi
 
 echo "🚀 Démarrage du service Python Oracle..."
 

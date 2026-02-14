@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "========================================="
-echo "  Démarrage COFIBANK Dashboard"
+echo "  Démarrage COFIdash Dashboard"
 echo "========================================="
 echo ""
 echo "Le serveur Laravel va démarrer sur http://localhost:8000"

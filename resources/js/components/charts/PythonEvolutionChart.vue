@@ -130,8 +130,12 @@ export default {
     };
 
     const resizeChart = () => {
-      if (chartContainer.value) {
-        Plotly.Plots.resize(chartContainer.value);
+      if (chartContainer.value && chartContainer.value.offsetParent !== null) {
+        try {
+          Plotly.Plots.resize(chartContainer.value);
+        } catch (resizeErr) {
+          console.warn('Erreur lors du redimensionnement du graphique:', resizeErr);
+        }
       }
     };
 

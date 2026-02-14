@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "========================================="
-echo "  Démarrage Service Python COFIBANK"
+echo "  Démarrage Service Python COFIdash"
 echo "========================================="
 echo ""
 echo "ATTENTION: Vous devez d'abord installer les prérequis :"

@@ -42,6 +42,8 @@ Route::middleware('auth:sanctum')->prefix('objectives')->group(function () {
     Route::get('/pending-validation', [ObjectiveController::class, 'pendingValidation']);
     Route::get('/md-filiale-objective', [ObjectiveController::class, 'getMDFilialeObjective']);
     Route::get('/dga-objective', [ObjectiveController::class, 'getDGAObjective']);
+    Route::get('/agency-objectives', [ObjectiveController::class, 'getAgencyObjectives']);
+    Route::get('/agency-objectives-sum', [ObjectiveController::class, 'getAgencyObjectivesSum']);
     Route::post('/', [ObjectiveController::class, 'store']);
     Route::put('/{id}', [ObjectiveController::class, 'update']);
     Route::post('/{id}/validate', [ObjectiveController::class, 'validateObjective']);

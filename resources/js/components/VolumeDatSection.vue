@@ -62,10 +62,13 @@
           <thead>
             <tr>
               <th>AGENCE</th>
+              <th>Objectif</th>
               <th>DAT_M_1</th>
               <th>DAT_M</th>
+              <th>TRO</th>
               <th>VARIATION_VOLUME_DA</th>
               <th>VARIATION_DAT%</th>
+              <th>DETTES_RATTACHEES_DAT</th>
             </tr>
           </thead>
           <tbody>
@@ -77,10 +80,13 @@
                 </button>
                 <strong>TERRITOIRE</strong>
               </td>
+              <td><strong>{{ formatNumber(territoireTotalVolumeDat.objectif) }}</strong></td>
               <td><strong>{{ formatNumber(territoireTotalVolumeDat.datM1) }}</strong></td>
               <td><strong>{{ formatNumber(territoireTotalVolumeDat.datM) }}</strong></td>
+              <td><strong>{{ formatPercent(territoireTotalVolumeDat.tro) }}</strong></td>
               <td><strong>{{ formatNumber(territoireTotalVolumeDat.variationVolumeDa) }}</strong></td>
               <td><strong>{{ formatPercent(territoireTotalVolumeDat.variationDat) }}</strong></td>
+              <td><strong>{{ formatNumber(territoireTotalVolumeDat.dettesRattacheesDat) }}</strong></td>
             </tr>
 
             <!-- Territoires dans TERRITOIRE -->
@@ -93,10 +99,13 @@
                     </button>
                     {{ territory.name }}
                   </td>
+                  <td><strong>{{ formatNumber(getVolumeDatTotal(territory, 'objectif')) }}</strong></td>
                   <td><strong>{{ formatNumber(getVolumeDatTotal(territory, 'datM1')) }}</strong></td>
                   <td><strong>{{ formatNumber(getVolumeDatTotal(territory, 'datM')) }}</strong></td>
+                  <td><strong>{{ formatPercent(getVolumeDatTROForTerritory(territory)) }}</strong></td>
                   <td><strong>{{ formatNumber(getVolumeDatTotal(territory, 'variationVolumeDa')) }}</strong></td>
                   <td><strong>{{ formatPercent(getVolumeDatTotal(territory, 'variationDat')) }}</strong></td>
+                  <td><strong>{{ formatNumber(getVolumeDatTotal(territory, 'dettesRattacheesDat')) }}</strong></td>
                 </tr>
                 <!-- Agences dans chaque territoire -->
                 <template v-if="expandedSections[`TERRITOIRE_${territoryKey}`]">
@@ -108,10 +117,13 @@
                     @click="selectAgency({ name: agency.name, category: 'TERRITOIRE', zone: territoryKey })"
                   >
                     <td class="level-3">{{ getAgencyName(agency) }}</td>
+                    <td>{{ formatNumber(getVolumeDatValue(agency, 'OBJECTIF') || agency.objectif || 0) }}</td>
                     <td>{{ formatNumber(getVolumeDatValue(agency, 'DAT_M_1')) }}</td>
                     <td>{{ formatNumber(getVolumeDatValue(agency, 'DAT_M')) }}</td>
-                    <td>{{ formatNumber(getVolumeDatValue(agency, 'VARIATION_VOLUME_DA')) }}</td>
-                    <td>{{ formatPercent(getVolumeDatValue(agency, 'VARIATION_DAT')) }}</td>
+                    <td>{{ formatPercent(getVolumeDatTRO(agency)) }}</td>
+                    <td>{{ formatNumber(getVariationVolumeDaForAgency(agency)) }}</td>
+                    <td>{{ formatPercent(getVariationDatForAgency(agency)) }}</td>
+                    <td>{{ formatNumber(getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT_M') || getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT') || 0) }}</td>
                   </tr>
                 </template>
               </template>
@@ -125,10 +137,13 @@
                 </button>
                 <strong>POINT SERVICES</strong>
               </td>
+              <td><strong>{{ formatNumber(pointServicesTotalVolumeDat.objectif) }}</strong></td>
               <td><strong>{{ formatNumber(pointServicesTotalVolumeDat.datM1) }}</strong></td>
               <td><strong>{{ formatNumber(pointServicesTotalVolumeDat.datM) }}</strong></td>
+              <td><strong>{{ formatPercent(pointServicesTotalVolumeDat.tro) }}</strong></td>
               <td><strong>{{ formatNumber(pointServicesTotalVolumeDat.variationVolumeDa) }}</strong></td>
               <td><strong>{{ formatPercent(pointServicesTotalVolumeDat.variationDat) }}</strong></td>
+              <td><strong>{{ formatNumber(pointServicesTotalVolumeDat.dettesRattacheesDat) }}</strong></td>
             </tr>
             
             <!-- Points de service individuels directement sous POINT SERVICES -->
@@ -144,10 +159,13 @@
                       @click="selectAgency({ name: agency.name, category: 'POINT SERVICES', zone: servicePointKey })"
                     >
                       <td class="level-2 service-point-cell">{{ getAgencyName(agency) }}</td>
+                      <td>{{ formatNumber(getVolumeDatValue(agency, 'OBJECTIF') || agency.objectif || 0) }}</td>
                       <td>{{ formatNumber(getVolumeDatValue(agency, 'DAT_M_1')) }}</td>
                       <td>{{ formatNumber(getVolumeDatValue(agency, 'DAT_M')) }}</td>
-                      <td>{{ formatNumber(getVolumeDatValue(agency, 'VARIATION_VOLUME_DA')) }}</td>
-                      <td>{{ formatPercent(getVolumeDatValue(agency, 'VARIATION_DAT')) }}</td>
+                      <td>{{ formatPercent(getVolumeDatTRO(agency)) }}</td>
+                      <td>{{ formatNumber(getVariationVolumeDaForAgency(agency)) }}</td>
+                      <td>{{ formatPercent(getVariationDatForAgency(agency)) }}</td>
+                      <td>{{ formatNumber(getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT_M') || getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT') || 0) }}</td>
                     </tr>
                   </template>
                 </template>
@@ -157,19 +175,25 @@
             <!-- GRAND COMPTE -->
             <tr v-if="grandCompteVolumeDat" class="level-3-row">
               <td class="level-3">GRAND COMPTE</td>
+              <td>{{ formatNumber(grandCompteVolumeDat.OBJECTIF || grandCompteVolumeDat.objectif || 0) }}</td>
               <td>{{ formatNumber(grandCompteVolumeDat.DAT_M_1 || 0) }}</td>
               <td>{{ formatNumber(grandCompteVolumeDat.DAT_M || 0) }}</td>
+              <td>{{ formatPercent(grandCompteVolumeDat.TRO || grandCompteVolumeDat.tro || 0) }}</td>
               <td>{{ formatNumber(grandCompteVolumeDat.VARIATION_VOLUME_DA || 0) }}</td>
               <td>{{ formatPercent(grandCompteVolumeDat.VARIATION_DAT || 0) }}</td>
+              <td>{{ formatNumber(grandCompteVolumeDat.DETTES_RATTACHEES_DAT_M || grandCompteVolumeDat.DETTES_RATTACHEES_DAT || 0) }}</td>
             </tr>
 
             <!-- Ligne TOTAL -->
             <tr class="total-row">
               <td><strong>TOTAL</strong></td>
+              <td><strong>{{ formatNumber(getGrandTotalVolumeDat('objectif')) }}</strong></td>
               <td><strong>{{ formatNumber(getGrandTotalVolumeDat('datM1')) }}</strong></td>
               <td><strong>{{ formatNumber(getGrandTotalVolumeDat('datM')) }}</strong></td>
+              <td><strong>{{ formatPercent(getGrandTotalVolumeDat('tro')) }}</strong></td>
               <td><strong>{{ formatNumber(getGrandTotalVolumeDat('variationVolumeDa')) }}</strong></td>
               <td><strong>{{ formatPercent(getGrandTotalVolumeDat('variationDat')) }}</strong></td>
+              <td><strong>{{ formatNumber(getGrandTotalVolumeDat('dettesRattacheesDat')) }}</strong></td>
             </tr>
           </tbody>
         </table>
@@ -421,23 +445,39 @@ export default {
     territoireTotalVolumeDat() {
       const hierarchicalData = this.filteredHierarchicalData || {};
       let total = {
+        objectif: 0,
         datM1: 0,
         datM: 0,
+        tro: 0,
         variationVolumeDa: 0,
-        variationDat: 0
+        variationDat: 0,
+        dettesRattacheesDat: 0
       };
       
       if (hierarchicalData.TERRITOIRE) {
         Object.entries(hierarchicalData.TERRITOIRE).forEach(([territoryKey, territory]) => {
           if (territoryKey !== 'grand_compte' && territory && territory.agencies) {
             territory.agencies.forEach(agency => {
+              total.objectif += parseFloat(this.getVolumeDatValue(agency, 'OBJECTIF') || agency.objectif || 0);
               total.datM1 += parseFloat(this.getVolumeDatValue(agency, 'DAT_M_1') || 0);
               total.datM += parseFloat(this.getVolumeDatValue(agency, 'DAT_M') || 0);
-              total.variationVolumeDa += parseFloat(this.getVolumeDatValue(agency, 'VARIATION_VOLUME_DA') || 0);
-              total.variationDat += parseFloat(this.getVolumeDatValue(agency, 'VARIATION_DAT') || 0);
+              total.dettesRattacheesDat += parseFloat(this.getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT_M') || this.getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT') || 0);
             });
           }
         });
+      }
+      
+      // Calculer le TRO total (DAT_M / Objectif * 100)
+      if (total.objectif > 0) {
+        total.tro = (total.datM / total.objectif) * 100;
+      }
+      
+      // Calculer VARIATION_VOLUME_DA = DAT_M - DAT_M_1
+      total.variationVolumeDa = total.datM - total.datM1;
+      
+      // Calculer VARIATION_DAT% = ((DAT_M - DAT_M_1) / DAT_M_1) * 100
+      if (total.datM1 > 0) {
+        total.variationDat = ((total.datM - total.datM1) / total.datM1) * 100;
       }
       
       return total;
@@ -445,23 +485,39 @@ export default {
     pointServicesTotalVolumeDat() {
       const hierarchicalData = this.filteredHierarchicalData || {};
       let total = {
+        objectif: 0,
         datM1: 0,
         datM: 0,
+        tro: 0,
         variationVolumeDa: 0,
-        variationDat: 0
+        variationDat: 0,
+        dettesRattacheesDat: 0
       };
       
       if (hierarchicalData['POINT SERVICES']) {
         Object.values(hierarchicalData['POINT SERVICES']).forEach(servicePoint => {
           if (servicePoint && servicePoint.agencies) {
             servicePoint.agencies.forEach(agency => {
+              total.objectif += parseFloat(this.getVolumeDatValue(agency, 'OBJECTIF') || agency.objectif || 0);
               total.datM1 += parseFloat(this.getVolumeDatValue(agency, 'DAT_M_1') || 0);
               total.datM += parseFloat(this.getVolumeDatValue(agency, 'DAT_M') || 0);
-              total.variationVolumeDa += parseFloat(this.getVolumeDatValue(agency, 'VARIATION_VOLUME_DA') || 0);
-              total.variationDat += parseFloat(this.getVolumeDatValue(agency, 'VARIATION_DAT') || 0);
+              total.dettesRattacheesDat += parseFloat(this.getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT_M') || this.getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT') || 0);
             });
           }
         });
+      }
+      
+      // Calculer le TRO total (DAT_M / Objectif * 100)
+      if (total.objectif > 0) {
+        total.tro = (total.datM / total.objectif) * 100;
+      }
+      
+      // Calculer VARIATION_VOLUME_DA = DAT_M - DAT_M_1
+      total.variationVolumeDa = total.datM - total.datM1;
+      
+      // Calculer VARIATION_DAT% = ((DAT_M - DAT_M_1) / DAT_M_1) * 100
+      if (total.datM1 > 0) {
+        total.variationDat = ((total.datM - total.datM1) / total.datM1) * 100;
       }
       
       return total;
@@ -471,11 +527,32 @@ export default {
       if (hierarchicalData.TERRITOIRE && hierarchicalData.TERRITOIRE.grand_compte) {
         const grandCompte = hierarchicalData.TERRITOIRE.grand_compte;
         if (grandCompte.agencies && grandCompte.agencies.length > 0) {
+          const objectif = this.getVolumeDatTotal(grandCompte, 'objectif');
+          const datM1 = this.getVolumeDatTotal(grandCompte, 'datM1');
+          const datM = this.getVolumeDatTotal(grandCompte, 'datM');
+          const tro = objectif > 0 ? (datM / objectif) * 100 : 0;
+          
+          // Calculer VARIATION_VOLUME_DA = DAT_M - DAT_M_1
+          const variationVolumeDa = datM - datM1;
+          
+          // Calculer VARIATION_DAT% = ((DAT_M - DAT_M_1) / DAT_M_1) * 100
+          let variationDat = 0;
+          if (datM1 > 0) {
+            variationDat = ((datM - datM1) / datM1) * 100;
+          }
+          
+          const dettesRattacheesDat = this.getVolumeDatTotal(grandCompte, 'dettesRattacheesDat');
           return {
-            DAT_M_1: this.getVolumeDatTotal(grandCompte, 'datM1'),
-            DAT_M: this.getVolumeDatTotal(grandCompte, 'datM'),
-            VARIATION_VOLUME_DA: this.getVolumeDatTotal(grandCompte, 'variationVolumeDa'),
-            VARIATION_DAT: this.getVolumeDatTotal(grandCompte, 'variationDat')
+            OBJECTIF: objectif,
+            objectif: objectif,
+            DAT_M_1: datM1,
+            DAT_M: datM,
+            TRO: tro,
+            tro: tro,
+            VARIATION_VOLUME_DA: variationVolumeDa,
+            VARIATION_DAT: variationDat,
+            DETTES_RATTACHEES_DAT_M: dettesRattacheesDat,
+            DETTES_RATTACHEES_DAT: dettesRattacheesDat
           };
         }
       }
@@ -785,8 +862,11 @@ export default {
       const fieldMap = {
         'DAT_M_1': ['DAT_M_1', 'dat_m_1', 'datM1', 'DATM1'],
         'DAT_M': ['DAT_M', 'dat_m', 'datM', 'DATM'],
+        'OBJECTIF': ['OBJECTIF', 'objectif', 'Objectif', 'OBJECTIF_VOLUME_DAT'],
         'VARIATION_VOLUME_DA': ['VARIATION_VOLUME_DA', 'variation_volume_da', 'variationVolumeDa', 'VARIATIONVOLUMEDA'],
-        'VARIATION_DAT': ['VARIATION_DAT', 'variation_dat', 'variationDat', 'VARIATIONDAT', 'VARIATION_DAT%']
+        'VARIATION_DAT': ['VARIATION_DAT', 'variation_dat', 'variationDat', 'VARIATIONDAT', 'VARIATION_DAT%'],
+        'DETTES_RATTACHEES_DAT_M': ['DETTES_RATTACHEES_DAT_M', 'dettes_rattachees_dat_m', 'dettesRattacheesDat', 'DETTESRATTACHEESDAT'],
+        'DETTES_RATTACHEES_DAT': ['DETTES_RATTACHEES_DAT', 'dettes_rattachees_dat', 'dettesRattacheesDat', 'DETTESRATTACHEESDAT', 'DETTES_RATTACHEES_DAT_M']
       };
       
       const possibleFields = fieldMap[field] || [field];
@@ -799,35 +879,138 @@ export default {
       
       return 0;
     },
+    getVolumeDatTRO(agency) {
+      if (!agency) return 0;
+      const objectif = this.getVolumeDatValue(agency, 'OBJECTIF') || agency.objectif || 0;
+      const datM = this.getVolumeDatValue(agency, 'DAT_M') || 0;
+      if (objectif > 0) {
+        return (datM / objectif) * 100;
+      }
+      return 0;
+    },
     getVolumeDatTotal(territory, field) {
       if (!territory || !territory.agencies) return 0;
+      
+      if (field === 'variationVolumeDa') {
+        // Calculer VARIATION_VOLUME_DA = DAT_M - DAT_M_1
+        let datM1 = 0;
+        let datM = 0;
+        territory.agencies.forEach(agency => {
+          datM1 += parseFloat(this.getVolumeDatValue(agency, 'DAT_M_1') || 0);
+          datM += parseFloat(this.getVolumeDatValue(agency, 'DAT_M') || 0);
+        });
+        return datM - datM1;
+      }
+      
+      if (field === 'variationDat') {
+        // Calculer VARIATION_DAT% = ((DAT_M - DAT_M_1) / DAT_M_1) * 100
+        let datM1 = 0;
+        let datM = 0;
+        territory.agencies.forEach(agency => {
+          datM1 += parseFloat(this.getVolumeDatValue(agency, 'DAT_M_1') || 0);
+          datM += parseFloat(this.getVolumeDatValue(agency, 'DAT_M') || 0);
+        });
+        if (datM1 > 0) {
+          return ((datM - datM1) / datM1) * 100;
+        }
+        return 0;
+      }
       
       let total = 0;
       territory.agencies.forEach(agency => {
         const fieldMap = {
+          'objectif': 'OBJECTIF',
           'datM1': 'DAT_M_1',
           'datM': 'DAT_M',
-          'variationVolumeDa': 'VARIATION_VOLUME_DA',
-          'variationDat': 'VARIATION_DAT'
+          'dettesRattacheesDat': 'DETTES_RATTACHEES_DAT_M'
         };
         
         const mappedField = fieldMap[field] || field;
-        total += parseFloat(this.getVolumeDatValue(agency, mappedField) || 0);
+        if (field === 'objectif') {
+          total += parseFloat(this.getVolumeDatValue(agency, mappedField) || agency.objectif || 0);
+        } else if (field === 'dettesRattacheesDat') {
+          total += parseFloat(this.getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT_M') || this.getVolumeDatValue(agency, 'DETTES_RATTACHEES_DAT') || 0);
+        } else {
+          total += parseFloat(this.getVolumeDatValue(agency, mappedField) || 0);
+        }
       });
       
       return total;
     },
+    getVolumeDatTROForTerritory(territory) {
+      if (!territory || !territory.agencies) return 0;
+      const objectif = this.getVolumeDatTotal(territory, 'objectif');
+      const datM = this.getVolumeDatTotal(territory, 'datM');
+      if (objectif > 0) {
+        return (datM / objectif) * 100;
+      }
+      return 0;
+    },
+    getVariationVolumeDaForAgency(agency) {
+      if (!agency) return 0;
+      const datM1 = this.getVolumeDatValue(agency, 'DAT_M_1');
+      const datM = this.getVolumeDatValue(agency, 'DAT_M');
+      return datM - datM1;
+    },
+    getVariationDatForAgency(agency) {
+      if (!agency) return 0;
+      const datM1 = this.getVolumeDatValue(agency, 'DAT_M_1');
+      const datM = this.getVolumeDatValue(agency, 'DAT_M');
+      if (datM1 > 0) {
+        return ((datM - datM1) / datM1) * 100;
+      }
+      return 0;
+    },
     getGrandTotalVolumeDat(field) {
+      if (field === 'tro') {
+        // Calculer le TRO global : (DAT_M total / Objectif total) * 100
+        const totalObjectif = this.territoireTotalVolumeDat.objectif + this.pointServicesTotalVolumeDat.objectif + 
+          (this.grandCompteVolumeDat ? (this.grandCompteVolumeDat.OBJECTIF || this.grandCompteVolumeDat.objectif || 0) : 0);
+        const totalDatM = this.territoireTotalVolumeDat.datM + this.pointServicesTotalVolumeDat.datM + 
+          (this.grandCompteVolumeDat ? (this.grandCompteVolumeDat.DAT_M || 0) : 0);
+        if (totalObjectif > 0) {
+          return (totalDatM / totalObjectif) * 100;
+        }
+        return 0;
+      }
+      
+      if (field === 'variationVolumeDa') {
+        // Calculer VARIATION_VOLUME_DA = DAT_M - DAT_M_1
+        const totalDatM1 = this.territoireTotalVolumeDat.datM1 + this.pointServicesTotalVolumeDat.datM1 + 
+          (this.grandCompteVolumeDat ? (this.grandCompteVolumeDat.DAT_M_1 || 0) : 0);
+        const totalDatM = this.territoireTotalVolumeDat.datM + this.pointServicesTotalVolumeDat.datM + 
+          (this.grandCompteVolumeDat ? (this.grandCompteVolumeDat.DAT_M || 0) : 0);
+        return totalDatM - totalDatM1;
+      }
+      
+      if (field === 'variationDat') {
+        // Calculer VARIATION_DAT% = ((DAT_M - DAT_M_1) / DAT_M_1) * 100
+        const totalDatM1 = this.territoireTotalVolumeDat.datM1 + this.pointServicesTotalVolumeDat.datM1 + 
+          (this.grandCompteVolumeDat ? (this.grandCompteVolumeDat.DAT_M_1 || 0) : 0);
+        const totalDatM = this.territoireTotalVolumeDat.datM + this.pointServicesTotalVolumeDat.datM + 
+          (this.grandCompteVolumeDat ? (this.grandCompteVolumeDat.DAT_M || 0) : 0);
+        if (totalDatM1 > 0) {
+          return ((totalDatM - totalDatM1) / totalDatM1) * 100;
+        }
+        return 0;
+      }
+      
       let total = this.territoireTotalVolumeDat[field] + this.pointServicesTotalVolumeDat[field];
       if (this.grandCompteVolumeDat) {
         const fieldMap = {
+          'objectif': 'OBJECTIF',
           'datM1': 'DAT_M_1',
           'datM': 'DAT_M',
-          'variationVolumeDa': 'VARIATION_VOLUME_DA',
-          'variationDat': 'VARIATION_DAT'
+          'dettesRattacheesDat': 'DETTES_RATTACHEES_DAT_M'
         };
         const mappedField = fieldMap[field] || field;
-        total += parseFloat(this.grandCompteVolumeDat[mappedField] || 0);
+        if (field === 'objectif') {
+          total += parseFloat(this.grandCompteVolumeDat.OBJECTIF || this.grandCompteVolumeDat.objectif || 0);
+        } else if (field === 'dettesRattacheesDat') {
+          total += parseFloat(this.grandCompteVolumeDat.DETTES_RATTACHEES_DAT_M || this.grandCompteVolumeDat.DETTES_RATTACHEES_DAT || 0);
+        } else {
+          total += parseFloat(this.grandCompteVolumeDat[mappedField] || 0);
+        }
       }
       return total;
     },
@@ -893,6 +1076,9 @@ export default {
             pointServicesKeys: Object.keys(data.hierarchicalData['POINT SERVICES'] || {}),
             pointServicesStructure: data.hierarchicalData['POINT SERVICES']
           });
+          
+          // Charger les objectifs après avoir reçu les données Oracle
+          this.loadObjectives();
         } else {
           this.hierarchicalDataFromBackend = {
             TERRITOIRE: {},
@@ -948,6 +1134,193 @@ export default {
       this.updateWeekFromDate();
       this.$nextTick(() => {
         this.loadDataForPeriod();
+      });
+    },
+    async loadObjectives() {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.warn('⚠️ Token non trouvé pour charger les objectifs');
+          return;
+        }
+        
+        // Préparer les paramètres selon la période sélectionnée
+        const params = {
+          type: 'VOLUME_DAT',
+          year: this.selectedYear
+        };
+        
+        // Ajouter les paramètres selon la période
+        if (this.selectedPeriod === 'month') {
+          params.period = 'month';
+          params.month = this.selectedMonth;
+        } else if (this.selectedPeriod === 'quarter') {
+          params.period = 'quarter';
+          params.quarter = Math.ceil(this.selectedMonth / 3);
+        } else if (this.selectedPeriod === 'year') {
+          params.period = 'year';
+        } else if (this.selectedPeriod === 'week') {
+          params.period = 'month';
+          if (this.selectedDate) {
+            const date = new Date(this.selectedDate);
+            params.month = date.getMonth() + 1;
+          }
+        }
+        
+        console.log('📊 Chargement des objectifs VOLUME_DAT avec params:', params);
+        
+        const response = await window.axios.get('/api/objectives', {
+          params: params,
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.data && response.data.success && response.data.data) {
+          const objectives = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+          console.log('✅ Objectifs VOLUME_DAT chargés:', objectives.length);
+          
+          // Créer un map des objectifs par agency_code et agency_name
+          const objectivesMapByCode = {};
+          const objectivesMapByName = {};
+          objectives.forEach(obj => {
+            const agencyCode = (obj.agency_code || '').toString().trim();
+            const agencyName = (obj.agency_name || '').toString().trim();
+            const value = obj.value || 0;
+            
+            if (agencyCode) {
+              objectivesMapByCode[agencyCode] = value;
+            }
+            if (agencyName) {
+              const normalizedName = agencyName.toUpperCase().trim();
+              objectivesMapByName[normalizedName] = value;
+            }
+          });
+          
+          console.log('📊 Objectifs par code:', Object.keys(objectivesMapByCode).length, objectivesMapByCode);
+          console.log('📊 Objectifs par nom:', Object.keys(objectivesMapByName).length, objectivesMapByName);
+          
+          // Fusionner les objectifs avec les données Oracle
+          this.mergeObjectivesWithOracleData(objectivesMapByCode, objectivesMapByName);
+        }
+      } catch (error) {
+        console.warn('⚠️ Erreur lors du chargement des objectifs:', error);
+      }
+    },
+    mergeObjectivesWithOracleData(objectivesMapByCode, objectivesMapByName) {
+      let matchedCount = 0;
+      let totalAgencies = 0;
+      
+      // Fusionner les objectifs avec les agences dans les territoires
+      if (this.hierarchicalDataFromBackend && this.hierarchicalDataFromBackend.TERRITOIRE) {
+        Object.keys(this.hierarchicalDataFromBackend.TERRITOIRE).forEach(territoryKey => {
+          const territory = this.hierarchicalDataFromBackend.TERRITOIRE[territoryKey];
+          if (territory.agencies && Array.isArray(territory.agencies)) {
+            territory.agencies.forEach(agency => {
+              totalAgencies++;
+              const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+              const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+              
+              // Chercher l'objectif par code d'agence d'abord
+              let objectiveValue = null;
+              if (agencyCode && objectivesMapByCode[agencyCode]) {
+                objectiveValue = objectivesMapByCode[agencyCode];
+                matchedCount++;
+                console.log(`✅ Objectif trouvé par code pour ${agencyName} (${agencyCode}):`, objectiveValue);
+              } else if (agencyName) {
+                const normalizedName = agencyName.toUpperCase().trim();
+                if (objectivesMapByName[normalizedName]) {
+                  objectiveValue = objectivesMapByName[normalizedName];
+                  matchedCount++;
+                  console.log(`✅ Objectif trouvé par nom pour ${agencyName}:`, objectiveValue);
+                } else {
+                  // Log pour déboguer les correspondances manquées
+                  console.log(`⚠️ Aucun objectif trouvé pour ${agencyName} (code: ${agencyCode})`);
+                  console.log('   Codes disponibles:', Object.keys(objectivesMapByCode));
+                  console.log('   Noms disponibles:', Object.keys(objectivesMapByName));
+                }
+              }
+              
+              if (objectiveValue !== null) {
+                // Utiliser Vue.set pour forcer la réactivité
+                this.$set(agency, 'objectif', objectiveValue);
+                this.$set(agency, 'OBJECTIF', objectiveValue);
+                this.$set(agency, 'OBJECTIF_VOLUME_DAT', objectiveValue);
+              }
+            });
+          }
+        });
+      }
+      
+      // Fusionner avec les points de service
+      if (this.hierarchicalDataFromBackend && this.hierarchicalDataFromBackend['POINT SERVICES']) {
+        Object.keys(this.hierarchicalDataFromBackend['POINT SERVICES']).forEach(servicePointKey => {
+          const servicePoint = this.hierarchicalDataFromBackend['POINT SERVICES'][servicePointKey];
+          if (servicePoint && servicePoint.agencies && Array.isArray(servicePoint.agencies)) {
+            servicePoint.agencies.forEach(agency => {
+              totalAgencies++;
+              const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+              const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+              
+              let objectiveValue = null;
+              if (agencyCode && objectivesMapByCode[agencyCode]) {
+                objectiveValue = objectivesMapByCode[agencyCode];
+                matchedCount++;
+              } else if (agencyName) {
+                const normalizedName = agencyName.toUpperCase().trim();
+                if (objectivesMapByName[normalizedName]) {
+                  objectiveValue = objectivesMapByName[normalizedName];
+                  matchedCount++;
+                }
+              }
+              
+              if (objectiveValue !== null) {
+                // Utiliser Vue.set pour forcer la réactivité
+                this.$set(agency, 'objectif', objectiveValue);
+                this.$set(agency, 'OBJECTIF', objectiveValue);
+                this.$set(agency, 'OBJECTIF_VOLUME_DAT', objectiveValue);
+              }
+            });
+          }
+        });
+      }
+      
+      // Fusionner avec le grand compte
+      if (this.hierarchicalDataFromBackend && this.hierarchicalDataFromBackend.TERRITOIRE && this.hierarchicalDataFromBackend.TERRITOIRE.grand_compte) {
+        const grandCompte = this.hierarchicalDataFromBackend.TERRITOIRE.grand_compte;
+        if (grandCompte.agencies && Array.isArray(grandCompte.agencies) && grandCompte.agencies.length > 0) {
+          grandCompte.agencies.forEach(agency => {
+            totalAgencies++;
+            const agencyCode = (agency.CODE_AGENCE || agency.code_agence || agency.code || agency.CODE || '').toString().trim();
+            const agencyName = (agency.name || agency.AGENCE || agency.NOM_AGENCE || '').toString().trim();
+            
+            let objectiveValue = null;
+            if (agencyCode && objectivesMapByCode[agencyCode]) {
+              objectiveValue = objectivesMapByCode[agencyCode];
+              matchedCount++;
+            } else if (agencyName) {
+              const normalizedName = agencyName.toUpperCase().trim();
+              if (objectivesMapByName[normalizedName]) {
+                objectiveValue = objectivesMapByName[normalizedName];
+                matchedCount++;
+              }
+            }
+            
+            if (objectiveValue !== null) {
+              // Utiliser Vue.set pour forcer la réactivité
+              this.$set(agency, 'objectif', objectiveValue);
+              this.$set(agency, 'OBJECTIF', objectiveValue);
+              this.$set(agency, 'OBJECTIF_VOLUME_DAT', objectiveValue);
+            }
+          });
+        }
+      }
+      
+      console.log(`📊 Fusion terminée: ${matchedCount} objectifs assignés sur ${totalAgencies} agences`);
+      
+      // Forcer une mise à jour de Vue pour que les computed properties se recalculent
+      this.$nextTick(() => {
+        this.$forceUpdate();
       });
     }
   }

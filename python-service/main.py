@@ -1,5 +1,5 @@
 """
-Service Python pour générer des graphiques pour COFIBANK Dashboard
+Service Python pour générer des graphiques pour COFIdash Dashboard
 Utilise FastAPI pour exposer des endpoints API
 """
 from fastapi import FastAPI
@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Création de l'application FastAPI
-app = FastAPI(title="COFIBANK Charts API", version="1.0.0")
+app = FastAPI(title="COFIdash Charts API", version="1.0.0")
 
 # Initialiser le pool de connexions Oracle au démarrage
 @app.on_event("startup")
@@ -55,7 +55,7 @@ app.include_router(cache.router)
 @app.get("/")
 async def root():
     """Endpoint de santé"""
-    return {"status": "ok", "service": "COFIBANK Charts API", "version": "1.0.0"}
+    return {"status": "ok", "service": "COFIdash Charts API", "version": "1.0.0"}
 
 
 if __name__ == "__main__":
